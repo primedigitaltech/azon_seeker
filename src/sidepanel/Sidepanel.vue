@@ -2,11 +2,19 @@
 import { keywords } from '~/logic/storage';
 import pageWorker from '~/logic/page-worker';
 
+const links = ref<string[]>([]);
+const worker = pageWorker.createAmazonPageWorker();
+
+onMounted(() => {
+  worker.channel.on('item-links-collected', (ev) => {
+    links.value = links.value.concat(ev.links);
+  });
+});
+
 const onSearch = async () => {
   if (keywords.value.trim() === '') {
     return;
   }
-  const worker = pageWorker.createAmazonPageWorker();
   await worker.doSearch(keywords.value);
   await worker.wanderSearchList();
 };
@@ -31,13 +39,18 @@ const onSearch = async () => {
     </n-space>
     <div style="height: 10px"></div>
     <n-card class="result-content-container" title="结果框">
-      <n-empty description="还没有结果哦">
+      <n-empty v-if="links.length === 0" description="还没有结果哦">
         <template #icon>
           <n-icon :size="50">
             <solar-cat-linear />
           </n-icon>
         </template>
       </n-empty>
+      <n-list size="medium" v-else>
+        <n-list-item v-for="(link, index) in links" :key="index">
+          <n-tag :href="link" target="_blank">{{ link }}</n-tag>
+        </n-list-item>
+      </n-list>
     </n-card>
   </main>
 </template>

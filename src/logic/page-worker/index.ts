@@ -1,4 +1,9 @@
+import Emittery from 'emittery';
+import { AmazonPageWorker, AmazonPageWorkerEvents } from './types';
+
 class AmazonPageWorkerImpl implements AmazonPageWorker {
+  readonly channel = new Emittery<AmazonPageWorkerEvents>();
+
   public async doSearch(keywords: string): Promise<string> {
     const url = new URL('https://www.amazon.com/s');
     url.searchParams.append('k', keywords);
@@ -16,7 +21,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     return url.toString();
   }
 
-  public async wanderSearchList(): Promise<void> {
+  private async wanderSearchSinglePage() {
     const tab = await browser.tabs
       .query({ active: true, currentWindow: true })
       .then((tabs) => tabs[0]);
@@ -31,6 +36,15 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
             window.scrollBy(0, ~~(Math.random() * 500) + 500);
             await new Promise((resolve) => setTimeout(resolve, 10));
           }
+          const items = document.querySelectorAll<HTMLDivElement>(
+            '.a-section.a-spacing-small.puis-padding-left-small',
+          );
+          const links: string[] = [];
+          items.forEach((el) => {
+            const link =
+              el.querySelector<HTMLAnchorElement>('a.a-link-normal')?.href;
+            link && links.push(link);
+          });
           const nextButton =
             document.querySelector<HTMLLinkElement>('.s-pagination-next');
           if (
@@ -41,14 +55,25 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
               setTimeout(resolve, 500 + ~~(500 * Math.random())),
             );
             nextButton.click();
+          } else {
+            return null;
           }
-          return true;
+          return links;
         } catch (e) {
-          return false;
+          return null;
         }
       },
     });
-    console.log('results', results);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return results.pop()?.result as string[] | null;
+  }
+
+  public async wanderSearchList(): Promise<void> {
+    let links = await this.wanderSearchSinglePage();
+    while (links) {
+      this.channel.emit('item-links-collected', { links });
+      links = await this.wanderSearchSinglePage();
+    }
     return new Promise((resolve) => setTimeout(resolve, 1000));
   }
 }
