@@ -1,13 +1,18 @@
 import type Emittery from 'emittery';
 
+type AmazonGoodsLinkItem = { link: string; title: string };
+
 interface AmazonPageWorkerEvents {
   /**
-   * Emitted when a new item is found on the Amazon page.
-   * @param link - The item link that was found.
+   * This event is used to collect links to items on the Amazon search page.
    */
-  ['item-links-collected']: { links: string[] };
-}
+  ['item-links-collected']: { objs: AmazonGoodsLinkItem[] };
 
+  /**
+   * Error event that occurs when there is an issue with the Amazon page worker.
+   */
+  ['error']: { message: string; url?: string };
+}
 
 interface AmazonPageWorker {
   /**
@@ -17,15 +22,19 @@ interface AmazonPageWorker {
   readonly channel: Emittery<AmazonPageWorkerEvents>;
 
   /**
-   * Search for a list of items on Amazon
+   * Search for a list of goods on Amazon
    * @param keywords - The keywords to search for on Amazon.
    * @returns A promise that resolves to a string representing the search URL.
    */
   doSearch(keywords: string): Promise<string>;
 
   /**
-   * Browsing item search page and collect links to those items.
-   * @param entryUrl - The URL of the Amazon search page to start from.
+   * Browsing goods search page and collect links to those goods.
    */
   wanderSearchList(): Promise<void>;
+
+  /**
+   * Browsing goods detail page and collect target information.
+   */
+  wanderDetailPage(): Promise<void>;
 }

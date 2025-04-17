@@ -33,12 +33,7 @@ export const sharedConfig: UserConfig = {
           'webextension-polyfill': [['=', 'browser']],
         },
         {
-          'naive-ui': [
-            'useDialog',
-            'useMessage',
-            'useNotification',
-            'useLoadingBar',
-          ],
+          'naive-ui': ['useDialog', 'useMessage', 'useNotification', 'useLoadingBar'],
         },
       ],
       dts: r('src/auto-imports.d.ts'),
@@ -54,6 +49,7 @@ export const sharedConfig: UserConfig = {
         IconsResolver({
           prefix: '',
         }),
+        // auto import naive ui
         NaiveUiResolver(),
       ],
     }),
@@ -67,10 +63,7 @@ export const sharedConfig: UserConfig = {
       enforce: 'post',
       apply: 'build',
       transformIndexHtml(html, { path }) {
-        return html.replace(
-          /"\/assets\//g,
-          `"${relative(dirname(path), '/assets')}/`,
-        );
+        return html.replace(/"\/assets\//g, `"${relative(dirname(path), '/assets')}/`);
       },
     },
   ],
