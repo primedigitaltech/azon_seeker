@@ -17,7 +17,7 @@ if (USE_SIDE_PANEL) {
     .catch((error: unknown) => console.error(error));
 }
 
-browser.runtime.onInstalled.addListener((): void => {
+browser.runtime.onInstalled.addListener(() => {
   // eslint-disable-next-line no-console
   console.log('Azon Seeker installed');
 });

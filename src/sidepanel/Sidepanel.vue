@@ -5,7 +5,7 @@ import type { AmazonGoodsLinkItem } from '~/logic/page-worker/types';
 import { NButton, type DataTableColumns } from 'naive-ui';
 
 const message = useMessage();
-const worker = pageWorker.createAmazonPageWorker();
+const worker = pageWorker.useAmazonPageWorker();
 
 type TableData = AmazonGoodsLinkItem & { rank: number };
 
@@ -36,7 +36,7 @@ const columns: DataTableColumns<TableData> = [
                 active: true,
                 currentWindow: true,
               })
-              .then((ts) => ts.pop());
+              .then((tabs) => tabs[0]);
             if (tab) {
               await browser.tabs.update(tab.id, {
                 url: row.link,

@@ -1,10 +1,10 @@
 /**
- *
+ * Execute Script on Document
  * @param tabId
  * @param func
  * @returns
  */
-export async function executeScript<T>(tabId: number, func: () => Promise<T>): Promise<T | null> {
+export async function exec<T>(tabId: number, func: () => Promise<T>): Promise<T | null> {
   const injectResults = await browser.scripting.executeScript({
     target: { tabId },
     func,

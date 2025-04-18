@@ -1,9 +1,18 @@
 import Emittery from 'emittery';
 import type { AmazonGoodsLinkItem, AmazonPageWorker, AmazonPageWorkerEvents } from './types';
 import Browser from 'webextension-polyfill';
-import { executeScript } from '../execute-script';
+import { exec } from '../execute-script';
 
 class AmazonPageWorkerImpl implements AmazonPageWorker {
+  private static _instance: AmazonPageWorker | null = null;
+  public static getInstance() {
+    if (this._instance === null) {
+      this._instance = new AmazonPageWorkerImpl();
+    }
+    return this._instance;
+  }
+  private constructor() {}
+
   readonly channel = new Emittery<AmazonPageWorkerEvents>();
 
   public async doSearch(keywords: string): Promise<string> {
@@ -24,7 +33,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
   private async wanderSearchSinglePage(tab: Browser.Tabs.Tab) {
     const tabId = tab.id!;
     // #region Wait for the Next button to appear, indicating that the product items have finished loading
-    await executeScript(tabId, async () => {
+    await exec(tabId, async () => {
       await new Promise((resolve) => setTimeout(resolve, 500 + ~~(500 * Math.random())));
       while (!document.querySelector('.s-pagination-strip')) {
         window.scrollBy(0, ~~(Math.random() * 500) + 500);
@@ -33,7 +42,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     });
     // #endregion
     // #region Determine the type of product search page https://github.com/primedigitaltech/azon_seeker/issues/1
-    const pagePattern = await executeScript(tabId, async () => {
+    const pagePattern = await exec(tabId, async () => {
       return [
         ...(document.querySelectorAll<HTMLDivElement>(
           '.a-section.a-spacing-small.puis-padding-left-small',
@@ -52,7 +61,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     switch (pagePattern) {
       // 处理商品以列表形式展示的情况
       case 'pattern-1':
-        data = await executeScript(tabId, async () => {
+        data = await exec(tabId, async () => {
           const items = [
             ...(document.querySelectorAll<HTMLDivElement>(
               '.a-section.a-spacing-small.a-spacing-top-small:not(.a-text-right)',
@@ -71,7 +80,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
         break;
       // 处理商品以二维图片格展示的情况
       case 'pattern-2':
-        data = await executeScript(tabId, async () => {
+        data = await exec(tabId, async () => {
           const items = [
             ...(document.querySelectorAll<HTMLDivElement>(
               '.a-section.a-spacing-small.puis-padding-left-small',
@@ -91,7 +100,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     }
     // #endregion
     // #region Determine if it is the last page, otherwise navigate to the next page
-    const hasNextPage = await executeScript(tabId, async () => {
+    const hasNextPage = await exec(tabId, async () => {
       const nextButton = document.querySelector<HTMLLinkElement>('.s-pagination-next');
       if (nextButton) {
         if (!nextButton.classList.contains('s-pagination-disabled')) {
@@ -134,8 +143,8 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
 }
 
 class PageWorkerFactory {
-  public createAmazonPageWorker(): AmazonPageWorker {
-    return new AmazonPageWorkerImpl();
+  public useAmazonPageWorker(): AmazonPageWorker {
+    return AmazonPageWorkerImpl.getInstance();
   }
 }
 
