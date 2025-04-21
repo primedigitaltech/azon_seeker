@@ -3,6 +3,10 @@ import type { AmazonGoodsLinkItem, AmazonPageWorker, AmazonPageWorkerEvents } fr
 import Browser from 'webextension-polyfill';
 import { exec } from '../execute-script';
 
+/**
+ * AmazonPageWorkerImpl can run on background & sidepanel & popup,
+ *  **can't** run on content script!
+ */
 class AmazonPageWorkerImpl implements AmazonPageWorker {
   private static _instance: AmazonPageWorker | null = null;
   public static getInstance() {
@@ -14,6 +18,13 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
   private constructor() {}
 
   readonly channel = new Emittery<AmazonPageWorkerEvents>();
+
+  private async getCurrentTab(): Promise<Browser.Tabs.Tab> {
+    const tab = await browser.tabs
+      .query({ active: true, currentWindow: true })
+      .then((tabs) => tabs[0]);
+    return tab;
+  }
 
   public async doSearch(keywords: string): Promise<string> {
     const url = new URL('https://www.amazon.com/s');
@@ -37,7 +48,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
       await new Promise((resolve) => setTimeout(resolve, 500 + ~~(500 * Math.random())));
       while (!document.querySelector('.s-pagination-strip')) {
         window.scrollBy(0, ~~(Math.random() * 500) + 500);
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, ~~(Math.random() * 50) + 50));
       }
     });
     // #endregion
@@ -124,22 +135,112 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
   }
 
   public async wanderSearchList(): Promise<void> {
-    const tab = await browser.tabs
-      .query({ active: true, currentWindow: true })
-      .then((tabs) => tabs[0]);
+    const tab = await this.getCurrentTab();
     let stopSignal = false;
+    const stop = async (_: unknown): Promise<void> => {
+      stopSignal = true;
+    };
+    this.channel.on('error', stop);
     let result = { hasNextPage: true, data: [] as AmazonGoodsLinkItem[] };
     while (result.hasNextPage && !stopSignal) {
       result = await this.wanderSearchSinglePage(tab);
       this.channel.emit('item-links-collected', { objs: result.data });
-      this.channel.on('error', () => {
-        stopSignal = true;
-      });
     }
+    this.channel.off('error', stop);
     return new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
-  public async wanderDetailPage(): Promise<void> {}
+  public async wanderDetailPage(asin: string): Promise<void> {
+    const tab = await this.getCurrentTab();
+    if (!tab.url?.includes(`/dp/${asin}`)) {
+      await browser.tabs.update(tab.id!, {
+        url: `https://www.amazon.com/dp/${asin}?th=1`,
+      });
+    }
+    //#region Await Production Introduction Element Loaded and Determine Page Pattern
+    const pattern = await exec(tab.id!, async () => {
+      let targetNode = document.querySelector('#prodDetails, #detailBulletsWrapper_feature_div');
+      while (!targetNode) {
+        window.scrollBy(0, ~~(Math.random() * 500) + 500);
+        await new Promise((resolve) => setTimeout(resolve, ~~(Math.random() * 50) + 50));
+        targetNode = document.querySelector('#prodDetails, #detailBulletsWrapper_feature_div');
+      }
+      return targetNode.getAttribute('id') === 'prodDetails' ? 'pattern-1' : 'pattern-2';
+    });
+    //#endregion
+    //#region Fetch Rating Info
+    const ratingInfo = await exec(tab.id!, async () => {
+      const review = document.querySelector('#averageCustomerReviews');
+      const rating = Number(
+        review?.querySelector('#acrPopover')?.getAttribute('title')?.split(' ')[0],
+      );
+      const ratingCount = Number(
+        review
+          ?.querySelector('#acrCustomerReviewText')
+          ?.getAttribute('aria-label')
+          ?.split(' ')[0]
+          ?.replace(',', ''),
+      );
+      return {
+        rating: isNaN(rating) || rating == 0 ? 0 : rating,
+        ratingCount: isNaN(ratingCount) || ratingCount == 0 ? 0 : ratingCount,
+      };
+    });
+    if (ratingInfo && (ratingInfo.rating !== 0 || ratingInfo.ratingCount !== 0)) {
+      this.channel.emit('item-rating-collected', {
+        asin,
+        ...ratingInfo,
+      });
+    }
+    //#endregion
+    //#region Fetch Category Rank Info
+    let rawRankingText: string | null = null;
+    switch (pattern) {
+      case 'pattern-1':
+        rawRankingText = await exec(tab.id!, async () => {
+          const xpathExp = `//div[@id='prodDetails']//table/tbody/tr[th[1][contains(text(), 'Best Sellers Rank')]]/td`;
+          const targetNode = document.evaluate(
+            xpathExp,
+            document,
+            null,
+            XPathResult.FIRST_ORDERED_NODE_TYPE,
+            null,
+          ).singleNodeValue as HTMLDivElement | null;
+          return targetNode?.innerText || null;
+        });
+        break;
+      case 'pattern-2':
+        rawRankingText = await exec(tab.id!, async () => {
+          const xpathExp = `//div[@id='detailBulletsWrapper_feature_div']//ul[.//li[contains(., 'Best Sellers Rank')]]//span[@class='a-list-item']`;
+          const targetNode = document.evaluate(
+            xpathExp,
+            document,
+            null,
+            XPathResult.FIRST_ORDERED_NODE_TYPE,
+            null,
+          ).singleNodeValue as HTMLDivElement | null;
+          return targetNode?.innerText || null;
+        });
+        break;
+    }
+    if (rawRankingText) {
+      const [category1Statement, category2Statement] = rawRankingText.split('\n');
+      const category1Ranking = Number(/(?<=#)\d+/.exec(category1Statement)?.[0]) || null;
+      const category1Name = /(?<=in\s).+(?=\s\(See)/.exec(category1Statement)?.[0] || null;
+      const category2Ranking = Number(/(?<=#)\d+/.exec(category2Statement)?.[0]) || null;
+      const category2Name = /(?<=in\s).+/.exec(category2Statement)?.[0] || null;
+      this.channel.emit('item-category-rank-collected', {
+        asin,
+        category1: ![category1Name, category1Ranking].includes(null)
+          ? { name: category1Name!, rank: category1Ranking! }
+          : undefined,
+        category2: ![category2Name, category2Ranking].includes(null)
+          ? { name: category2Name!, rank: category2Ranking! }
+          : undefined,
+      });
+    }
+    //#endregion
+  }
 }
 
 class PageWorkerFactory {

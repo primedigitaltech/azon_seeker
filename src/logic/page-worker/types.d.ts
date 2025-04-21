@@ -4,9 +4,27 @@ type AmazonGoodsLinkItem = { link: string; title: string };
 
 interface AmazonPageWorkerEvents {
   /**
-   * This event is used to collect links to items on the Amazon search page.
+   * The event is fired when worker collected links to items on the Amazon search page.
    */
   ['item-links-collected']: { objs: AmazonGoodsLinkItem[] };
+
+  /**
+   * The event is fired when worker collected goods' rating on the Amazon detail page.
+   */
+  ['item-rating-collected']: {
+    asin: string;
+    rating: number;
+    ratingCount: number;
+  };
+
+  /**
+   * The event is fired when worker
+   */
+  ['item-category-rank-collected']: {
+    asin: string;
+    category1?: { name: string; rank: number };
+    category2?: { name: string; rank: number };
+  };
 
   /**
    * Error event that occurs when there is an issue with the Amazon page worker.
@@ -35,6 +53,7 @@ interface AmazonPageWorker {
 
   /**
    * Browsing goods detail page and collect target information.
+   * @param asin Product indentification
    */
-  wanderDetailPage(): Promise<void>;
+  wanderDetailPage(asin: string): Promise<void>;
 }
