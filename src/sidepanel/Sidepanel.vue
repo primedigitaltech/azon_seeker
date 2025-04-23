@@ -72,7 +72,7 @@ const onCollect = async () => {
     message.error(msg);
   });
   await worker.doSearch(keywords.value);
-  await worker.wanderSearchList();
+  await worker.wanderSearchPage();
   message.info('完成');
 };
 </script>

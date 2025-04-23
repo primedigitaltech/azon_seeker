@@ -10,7 +10,7 @@
       "name": "Attach to side panel",
       "webRoot": "${workspaceFolder}/src/",
       "port": 9222,
-      "urlFilter": "chrome-extension://*"
+      "urlFilter": "chrome-extension://fmalpbpehdilmjhnanhpjmnkgbahopfj/*"
     }
   ]
 }

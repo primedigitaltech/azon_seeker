@@ -1,6 +1,6 @@
 import Emittery from 'emittery';
 import type { AmazonGoodsLinkItem, AmazonPageWorker, AmazonPageWorkerEvents } from './types';
-import Browser from 'webextension-polyfill';
+import type { Tabs } from 'webextension-polyfill';
 import { exec } from '../execute-script';
 
 /**
@@ -19,7 +19,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
 
   readonly channel = new Emittery<AmazonPageWorkerEvents>();
 
-  private async getCurrentTab(): Promise<Browser.Tabs.Tab> {
+  private async getCurrentTab(): Promise<Tabs.Tab> {
     const tab = await browser.tabs
       .query({ active: true, currentWindow: true })
       .then((tabs) => tabs[0]);
@@ -41,7 +41,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     return url.toString();
   }
 
-  private async wanderSearchSinglePage(tab: Browser.Tabs.Tab) {
+  private async wanderSearchSinglePage(tab: Tabs.Tab) {
     const tabId = tab.id!;
     // #region Wait for the Next button to appear, indicating that the product items have finished loading
     await exec(tabId, async () => {
@@ -134,7 +134,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     return { data, hasNextPage };
   }
 
-  public async wanderSearchList(): Promise<void> {
+  public async wanderSearchPage(): Promise<void> {
     const tab = await this.getCurrentTab();
     let stopSignal = false;
     const stop = async (_: unknown): Promise<void> => {
@@ -239,6 +239,23 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
           : undefined,
       });
     }
+    //#endregion
+    //#region Fetch Goods' Images
+    const imageUrls = await exec(tab.id!, async () => {
+      const node = document.evaluate(
+        `//div[@id='imgTagWrapperId']/img`,
+        document,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null,
+      ).singleNodeValue as HTMLImageElement | null;
+      return node ? [node.getAttribute('src')!] : null;
+    });
+    imageUrls &&
+      this.channel.emit('item-images-collected', {
+        asin,
+        urls: imageUrls,
+      });
     //#endregion
   }
 }

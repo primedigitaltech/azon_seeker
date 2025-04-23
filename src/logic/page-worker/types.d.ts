@@ -27,6 +27,14 @@ interface AmazonPageWorkerEvents {
   };
 
   /**
+   * The event is fired when images collected
+   */
+  ['item-images-collected']: {
+    asin: string;
+    urls: string[];
+  };
+
+  /**
    * Error event that occurs when there is an issue with the Amazon page worker.
    */
   ['error']: { message: string; url?: string };
@@ -49,7 +57,7 @@ interface AmazonPageWorker {
   /**
    * Browsing goods search page and collect links to those goods.
    */
-  wanderSearchList(): Promise<void>;
+  wanderSearchPage(): Promise<void>;
 
   /**
    * Browsing goods detail page and collect target information.

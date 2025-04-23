@@ -1,5 +1,9 @@
 import type { App } from 'vue';
 
+/**
+ * Setup Vue app
+ * @param app Vue app
+ */
 export function setupApp(app: App) {
   // Inject a globally available `$app` object in template
   app.config.globalProperties.$app = {
