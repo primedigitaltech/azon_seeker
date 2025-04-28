@@ -11,6 +11,13 @@
       "webRoot": "${workspaceFolder}/src/",
       "port": 9222,
       "urlFilter": "chrome-extension://fmalpbpehdilmjhnanhpjmnkgbahopfj/*"
+    },
+    {
+      "type": "msedge",
+      "request": "attach",
+      "name": "Attach to Amazon",
+      "port": 9222,
+      "urlFilter": "https://www.amazon.com/*"
     }
   ]
 }

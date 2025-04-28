@@ -1,12 +1,18 @@
 import type Emittery from 'emittery';
 
-type AmazonGoodsLinkItem = { link: string; title: string };
+type AmazonGoodsLinkItem = {
+  link: string;
+  title: string;
+  asin: string;
+  rank: number;
+  imageSrc: string;
+};
 
 interface AmazonPageWorkerEvents {
   /**
    * The event is fired when worker collected links to items on the Amazon search page.
    */
-  ['item-links-collected']: { objs: AmazonGoodsLinkItem[] };
+  ['item-links-collected']: { objs: { link: string; title: string; imageSrc: string }[] };
 
   /**
    * The event is fired when worker collected goods' rating on the Amazon detail page.
@@ -61,7 +67,7 @@ interface AmazonPageWorker {
 
   /**
    * Browsing goods detail page and collect target information.
-   * @param asin Product indentification
+   * @param entry Product link or Amazon Standard Identification Number.
    */
-  wanderDetailPage(asin: string): Promise<void>;
+  wanderDetailPage(entry: string): Promise<void>;
 }

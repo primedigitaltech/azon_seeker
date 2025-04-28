@@ -1,5 +1,5 @@
 import Emittery from 'emittery';
-import type { AmazonGoodsLinkItem, AmazonPageWorker, AmazonPageWorkerEvents } from './types';
+import type { AmazonPageWorker, AmazonPageWorkerEvents } from './types';
 import type { Tabs } from 'webextension-polyfill';
 import { exec } from '../execute-script';
 
@@ -56,9 +56,9 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     const pagePattern = await exec(tabId, async () => {
       return [
         ...(document.querySelectorAll<HTMLDivElement>(
-          '.a-section.a-spacing-small.puis-padding-left-small',
+          '.puisg-row:has(.a-section.a-spacing-small.a-spacing-top-small:not(.a-text-right))',
         ) as unknown as HTMLDivElement[]),
-      ].filter((e) => e.getClientRects().length > 0).length === 0
+      ].filter((e) => e.getClientRects().length > 0).length > 0
         ? 'pattern-1'
         : 'pattern-2';
     });
@@ -68,24 +68,28 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     }
     // #endregion
     // #region Retrieve key nodes and their information from the critical product search page
-    let data: AmazonGoodsLinkItem[] | null = null;
+    let data: { link: string; title: string; imageSrc: string }[] | null = null;
     switch (pagePattern) {
       // 处理商品以列表形式展示的情况
       case 'pattern-1':
         data = await exec(tabId, async () => {
           const items = [
             ...(document.querySelectorAll<HTMLDivElement>(
-              '.a-section.a-spacing-small.a-spacing-top-small:not(.a-text-right)',
+              '.puisg-row:has(.a-section.a-spacing-small.a-spacing-top-small:not(.a-text-right))',
             ) as unknown as HTMLDivElement[]),
           ].filter((e) => e.getClientRects().length > 0);
-          const linkObjs = items.reduce<AmazonGoodsLinkItem[]>((objs, el) => {
-            const link = el.querySelector<HTMLAnchorElement>('a')?.href;
-            const title = el
-              .querySelector<HTMLHeadingElement>('h2.a-color-base')
-              ?.getAttribute('aria-label');
-            link && objs.push({ link, title: title || '' });
-            return objs;
-          }, []);
+          const linkObjs = items.reduce<{ link: string; title: string; imageSrc: string }[]>(
+            (objs, el) => {
+              const link = el.querySelector<HTMLAnchorElement>('a')?.href;
+              const title = el
+                .querySelector<HTMLHeadingElement>('h2.a-color-base')!
+                .getAttribute('aria-label')!;
+              const imageSrc = el.querySelector<HTMLImageElement>('img.s-image')!.src!;
+              link && objs.push({ link, title, imageSrc });
+              return objs;
+            },
+            [],
+          );
           return linkObjs;
         });
         break;
@@ -94,15 +98,19 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
         data = await exec(tabId, async () => {
           const items = [
             ...(document.querySelectorAll<HTMLDivElement>(
-              '.a-section.a-spacing-small.puis-padding-left-small',
+              '.puis-card-container:has(.a-section.a-spacing-small.puis-padding-left-small)',
             ) as unknown as HTMLDivElement[]),
           ].filter((e) => e.getClientRects().length > 0);
-          const linkObjs = items.reduce<AmazonGoodsLinkItem[]>((objs, el) => {
-            const link = el.querySelector<HTMLAnchorElement>('a.a-link-normal')?.href;
-            const title = el.querySelector<HTMLHeadingElement>('h2.a-color-base')?.innerText;
-            link && objs.push({ link, title: title || '' });
-            return objs;
-          }, []);
+          const linkObjs = items.reduce<{ link: string; title: string; imageSrc: string }[]>(
+            (objs, el) => {
+              const link = el.querySelector<HTMLAnchorElement>('a.a-link-normal')?.href;
+              const title = el.querySelector<HTMLHeadingElement>('h2.a-color-base')!.innerText;
+              const imageSrc = el.querySelector<HTMLImageElement>('img.s-image')!.src!;
+              link && objs.push({ link, title, imageSrc });
+              return objs;
+            },
+            [],
+          );
           return linkObjs;
         });
         break;
@@ -141,21 +149,36 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
       stopSignal = true;
     };
     this.channel.on('error', stop);
-    let result = { hasNextPage: true, data: [] as AmazonGoodsLinkItem[] };
+    let result = {
+      hasNextPage: true,
+      data: [] as unknown[],
+    };
     while (result.hasNextPage && !stopSignal) {
       result = await this.wanderSearchSinglePage(tab);
-      this.channel.emit('item-links-collected', { objs: result.data });
+      this.channel.emit('item-links-collected', {
+        objs: result.data as { link: string; title: string; imageSrc: string }[],
+      });
     }
     this.channel.off('error', stop);
     return new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
-  public async wanderDetailPage(asin: string): Promise<void> {
+  public async wanderDetailPage(entry: string): Promise<void> {
     const tab = await this.getCurrentTab();
-    if (!tab.url?.includes(`/dp/${asin}`)) {
+    const params = { asin: '', url: '' };
+    if (entry.match(/^https?:\/\/www\.amazon\.com.*\/dp\/[A-Z0-9]{10}/)) {
+      const [asin] = /\/\/dp\/[A-Z0-9]{10}/.exec(entry)!;
+      params.asin = asin;
+      params.url = entry;
+    } else if (entry.match(/^[A-Z0-9]{10}$/)) {
+      params.asin = entry;
+      params.url = `https://www.amazon.com/dp/${entry}`;
+    }
+    if (!tab.url?.includes(`www.amazon.com`) || !tab.url?.includes(`/dp/${params.asin}`)) {
       await browser.tabs.update(tab.id!, {
-        url: `https://www.amazon.com/dp/${asin}?th=1`,
+        url: params.url,
       });
+      await new Promise<void>((resolve) => setTimeout(resolve, 1000));
     }
     //#region Await Production Introduction Element Loaded and Determine Page Pattern
     const pattern = await exec(tab.id!, async () => {
@@ -188,7 +211,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     });
     if (ratingInfo && (ratingInfo.rating !== 0 || ratingInfo.ratingCount !== 0)) {
       this.channel.emit('item-rating-collected', {
-        asin,
+        asin: params.asin,
         ...ratingInfo,
       });
     }
@@ -230,7 +253,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
       const category2Ranking = Number(/(?<=#)\d+/.exec(category2Statement)?.[0]) || null;
       const category2Name = /(?<=in\s).+/.exec(category2Statement)?.[0] || null;
       this.channel.emit('item-category-rank-collected', {
-        asin,
+        asin: params.asin,
         category1: ![category1Name, category1Ranking].includes(null)
           ? { name: category1Name!, rank: category1Ranking! }
           : undefined,
@@ -253,7 +276,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     });
     imageUrls &&
       this.channel.emit('item-images-collected', {
-        asin,
+        asin: entry,
         urls: imageUrls,
       });
     //#endregion
