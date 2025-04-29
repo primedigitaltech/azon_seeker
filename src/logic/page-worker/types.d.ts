@@ -70,4 +70,9 @@ interface AmazonPageWorker {
    * @param entry Product link or Amazon Standard Identification Number.
    */
   wanderDetailPage(entry: string): Promise<void>;
+
+  /**
+   * Stop the worker.
+   */
+  stop(): Promise<void>;
 }

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import SidePanel from './SidePanel.vue';
+import Options from './Options.vue';
 </script>
 
 <template>
@@ -17,7 +17,7 @@ import SidePanel from './SidePanel.vue';
     <n-modal-provider>
       <n-dialog-provider>
         <n-message-provider>
-          <side-panel />
+          <options />
         </n-message-provider>
       </n-dialog-provider>
     </n-modal-provider>

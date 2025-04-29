@@ -1,83 +1,30 @@
 <script setup lang="ts">
 import { keywords } from '~/logic/storage';
 import pageWorker from '~/logic/page-worker';
-import { exportToXLSX } from '~/logic/data-io';
 import type { AmazonGoodsLinkItem } from '~/logic/page-worker/types';
 import { NButton } from 'naive-ui';
 import { itemList as items } from '~/logic/storage';
-import type { TableColumn } from 'naive-ui/es/data-table/src/interface';
 
 const message = useMessage();
 const worker = pageWorker.useAmazonPageWorker();
+const workerRunning = ref(false);
 
-const page = reactive({ current: 1, size: 5 });
-const resultSearchText = ref('');
-const columns: (TableColumn<AmazonGoodsLinkItem> & { hidden?: boolean })[] = [
+const timelines = ref<
   {
-    title: '排位',
-    key: 'rank',
-  },
-  {
-    title: '标题',
-    key: 'title',
-  },
-  {
-    title: 'ASIN',
-    key: 'asin',
-  },
-  {
-    title: '图片',
-    key: 'imageSrc',
-    hidden: true,
-  },
-  {
-    title: '链接',
-    key: 'link',
-    render(row) {
-      return h(
-        NButton,
-        {
-          type: 'primary',
-          text: true,
-          size: 'small',
-          onClick: async () => {
-            const tab = await browser.tabs
-              .query({
-                active: true,
-                currentWindow: true,
-              })
-              .then((tabs) => tabs[0]);
-            if (tab) {
-              await browser.tabs.update(tab.id, {
-                url: row.link,
-              });
-            }
-          },
-        },
-        () => '前往',
-      );
-    },
-  },
-];
-
-const itemView = computed(() => {
-  const { current, size } = page;
-  const searchText = resultSearchText.value;
-  let data = items.value;
-  if (searchText.trim() !== '') {
-    data = data.filter(
-      (r) =>
-        r.title.toLowerCase().includes(searchText.toLowerCase()) ||
-        r.asin.toLowerCase().includes(searchText.toLowerCase()),
-    );
-  }
-  let pageCount = ~~(data.length / size);
-  pageCount += data.length % size > 0 ? 1 : 0;
-  data = data.slice((current - 1) * size, current * size);
-  return { data, pageCount };
-});
+    type: 'default' | 'error' | 'success' | 'warning' | 'info';
+    title: string;
+    time: string;
+    content: string;
+  }[]
+>([]);
 
 const onItemLinksCollected = (ev: { objs: Record<string, unknown>[] }) => {
+  timelines.value.push({
+    type: 'success',
+    title: '检测到数据',
+    time: new Date().toLocaleString(),
+    content: `成功采集到 ${ev.objs.length} 条数据`,
+  });
   const addedRows = ev.objs.map((v, i) => {
     const [asin] = /(?<=\/dp\/)[A-Z0-9]{10}/.exec(v.link as string)!;
     return { ...v, asin, rank: items.value.length + i + 1 } as AmazonGoodsLinkItem;
@@ -86,39 +33,63 @@ const onItemLinksCollected = (ev: { objs: Record<string, unknown>[] }) => {
 };
 
 const onCollectStart = async () => {
+  workerRunning.value = true;
+  timelines.value = [
+    {
+      type: 'info',
+      title: '开始',
+      time: new Date().toLocaleString(),
+      content: '开始数据采集',
+    },
+  ];
   if (keywords.value.trim() === '') {
     return;
   }
-  message.info('开始收集');
-  items.value = [];
   worker.channel.on('error', ({ message: msg }) => {
+    timelines.value.push({
+      type: 'error',
+      title: '错误',
+      time: new Date().toLocaleString(),
+      content: msg,
+    });
     message.error(msg);
   });
   worker.channel.on('item-links-collected', onItemLinksCollected);
   await worker.doSearch(keywords.value);
   await worker.wanderSearchPage();
   worker.channel.off('item-links-collected', onItemLinksCollected);
-  message.info('完成');
+  timelines.value.push({
+    type: 'info',
+    title: '结束',
+    time: new Date().toLocaleString(),
+    content: '数据采集完成',
+  });
+  workerRunning.value = false;
 };
 
-const handleExport = async () => {
-  const headers = columns.reduce(
-    (p, v: Record<string, any>) => {
-      if ('key' in v && 'title' in v) {
-        p.push({ label: v.title, prop: v.key });
-      }
-      return p;
-    },
-    [] as { label: string; prop: string }[],
-  );
-  exportToXLSX(items.value, { headers });
-  message.info('导出完成');
+const onCollectStop = async () => {
+  workerRunning.value = false;
+  message.info('停止收集');
+};
+
+const openOptionsPage = async () => {
+  await browser.runtime.openOptionsPage();
 };
 </script>
 
 <template>
   <main class="search-page-worker">
-    <n-space class="app-header">
+    <div class="header-menu">
+      <n-button :disabled="workerRunning" class="setting-button" round @click="openOptionsPage">
+        <template #icon>
+          <n-icon size="20" color="#0f0f0f">
+            <stash:search-results />
+          </n-icon>
+        </template>
+        <template #default> 数据 </template>
+      </n-button>
+    </div>
+    <n-space class="app-title">
       <mdi-cat style="font-size: 60px; color: black" />
       <h1>Azon Seeker</h1>
     </n-space>
@@ -137,53 +108,43 @@ const handleExport = async () => {
           </n-icon>
         </template>
       </n-input>
-      <n-button type="primary" round size="large" @click="onCollectStart">采集</n-button>
+      <n-button
+        type="primary"
+        round
+        size="large"
+        @click="!workerRunning ? onCollectStart() : onCollectStop()"
+      >
+        <template #icon>
+          <n-icon v-if="!workerRunning" size="20">
+            <ant-design-thunderbolt-outlined />
+          </n-icon>
+          <n-icon v-else size="20">
+            <ion-stop-outline />
+          </n-icon>
+        </template>
+      </n-button>
     </n-space>
     <div style="height: 10px"></div>
-    <n-card class="result-content-container" title="结果框">
-      <template #header-extra>
-        <n-space>
-          <n-input
-            v-model:value="resultSearchText"
-            size="small"
-            placeholder="输入关键词查询结果"
-            round
-          />
-          <n-button type="primary" tertiary round size="small" @click="items = []">
-            <template #icon>
-              <ion-trash-outline />
-            </template>
-          </n-button>
-          <n-button type="primary" tertiary round size="small" @click="handleExport">
-            <template #icon>
-              <ion-download-outline />
-            </template>
-          </n-button>
-        </n-space>
-      </template>
-      <n-empty v-if="items.length === 0" size="huge" style="padding-top: 40px">
+    <n-card class="progress-report" title="数据获取情况">
+      <n-timeline v-if="timelines.length > 0">
+        <n-timeline-item
+          v-for="(item, index) in timelines"
+          :key="index"
+          :type="item.type"
+          :title="item.title"
+          :time="item.time"
+        >
+          {{ item.content }}
+        </n-timeline-item>
+      </n-timeline>
+      <n-empty v-else size="large">
         <template #icon>
-          <n-icon size="60">
+          <n-icon size="50">
             <solar-cat-linear />
           </n-icon>
         </template>
-        <template #default>
-          <h3>还没有数据哦</h3>
-        </template>
+        <template #default>还未开始</template>
       </n-empty>
-      <n-space vertical v-else>
-        <n-data-table
-          :columns="columns.filter((col) => col.hidden !== true)"
-          :data="itemView.data"
-        />
-        <n-pagination
-          v-model:page="page.current"
-          v-model:page-size="page.size"
-          :page-count="itemView.pageCount"
-          :page-sizes="[5, 10, 20]"
-          show-size-picker
-        />
-      </n-space>
     </n-card>
   </main>
 </template>
@@ -197,16 +158,30 @@ const handleExport = async () => {
   align-items: center;
   gap: 20px;
 
-  .app-header {
-    margin-top: 100px;
+  .header-menu {
+    width: 95%;
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+
+    .setting-button {
+      opacity: 0.7;
+      &:hover {
+        opacity: 1;
+      }
+    }
+  }
+
+  .app-title {
+    margin-top: 60px;
   }
 
   .search-input-box {
-    min-width: 270px;
+    min-width: 240px;
   }
 
-  .result-content-container {
-    width: 90%;
+  .progress-report {
+    width: 95%;
   }
 }
 </style>

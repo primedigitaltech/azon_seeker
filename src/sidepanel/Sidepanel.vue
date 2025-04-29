@@ -4,11 +4,11 @@ import SearchPageWorker from './SearchPageWorker.vue';
 
 const tabs = [
   {
-    name: 'Search Page',
+    name: '搜索页',
     component: SearchPageWorker,
   },
   {
-    name: 'Detail Page',
+    name: '详情页',
     component: DetailPageWorker,
   },
 ];

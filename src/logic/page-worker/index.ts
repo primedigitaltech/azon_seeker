@@ -8,6 +8,7 @@ import { exec } from '../execute-script';
  *  **can't** run on content script!
  */
 class AmazonPageWorkerImpl implements AmazonPageWorker {
+  //#region Singleton
   private static _instance: AmazonPageWorker | null = null;
   public static getInstance() {
     if (this._instance === null) {
@@ -16,29 +17,23 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     return this._instance;
   }
   private constructor() {}
+  //#endregion
 
+  /**
+   * The channel for communication with the Amazon page worker.
+   */
   readonly channel = new Emittery<AmazonPageWorkerEvents>();
+
+  /**
+   * The signal to interrupt the current operation.
+   */
+  private _interruptSignal = false;
 
   private async getCurrentTab(): Promise<Tabs.Tab> {
     const tab = await browser.tabs
       .query({ active: true, currentWindow: true })
       .then((tabs) => tabs[0]);
     return tab;
-  }
-
-  public async doSearch(keywords: string): Promise<string> {
-    const url = new URL('https://www.amazon.com/s');
-    url.searchParams.append('k', keywords);
-
-    const tab = await browser.tabs
-      .query({ active: true, currentWindow: true })
-      .then((tabs) => tabs[0]);
-    const currentUrl = new URL(tab.url!);
-    if (currentUrl.hostname !== url.hostname || currentUrl.searchParams.get('k') !== keywords) {
-      await browser.tabs.update(tab.id, { url: url.toString() });
-      await new Promise<void>((resolve) => setTimeout(resolve, 1000));
-    }
-    return url.toString();
   }
 
   private async wanderSearchSinglePage(tab: Tabs.Tab) {
@@ -142,23 +137,39 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     return { data, hasNextPage };
   }
 
+  public async doSearch(keywords: string): Promise<string> {
+    const url = new URL('https://www.amazon.com/s');
+    url.searchParams.append('k', keywords);
+
+    const tab = await browser.tabs
+      .query({ active: true, currentWindow: true })
+      .then((tabs) => tabs[0]);
+    const currentUrl = new URL(tab.url!);
+    if (currentUrl.hostname !== url.hostname || currentUrl.searchParams.get('k') !== keywords) {
+      await browser.tabs.update(tab.id, { url: url.toString() });
+      await new Promise<void>((resolve) => setTimeout(resolve, 1000));
+    }
+    return url.toString();
+  }
+
   public async wanderSearchPage(): Promise<void> {
     const tab = await this.getCurrentTab();
-    let stopSignal = false;
+    this._interruptSignal = false;
     const stop = async (_: unknown): Promise<void> => {
-      stopSignal = true;
+      this._interruptSignal = true;
     };
     this.channel.on('error', stop);
     let result = {
       hasNextPage: true,
       data: [] as unknown[],
     };
-    while (result.hasNextPage && !stopSignal) {
+    while (result.hasNextPage && !this._interruptSignal) {
       result = await this.wanderSearchSinglePage(tab);
       this.channel.emit('item-links-collected', {
         objs: result.data as { link: string; title: string; imageSrc: string }[],
       });
     }
+    this._interruptSignal = false;
     this.channel.off('error', stop);
     return new Promise((resolve) => setTimeout(resolve, 1000));
   }
@@ -248,9 +259,11 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     }
     if (rawRankingText) {
       const [category1Statement, category2Statement] = rawRankingText.split('\n');
-      const category1Ranking = Number(/(?<=#)\d+/.exec(category1Statement)?.[0]) || null;
+      const category1Ranking =
+        Number(/(?<=#)[0-9,]+/.exec(category1Statement)?.[0].replace(',', '')) || null; // "," should be removed
       const category1Name = /(?<=in\s).+(?=\s\(See)/.exec(category1Statement)?.[0] || null;
-      const category2Ranking = Number(/(?<=#)\d+/.exec(category2Statement)?.[0]) || null;
+      const category2Ranking =
+        Number(/(?<=#)[0-9,]+/.exec(category2Statement)?.[0].replace(',', '')) || null; // "," should be removed
       const category2Name = /(?<=in\s).+/.exec(category2Statement)?.[0] || null;
       this.channel.emit('item-category-rank-collected', {
         asin: params.asin,
@@ -265,14 +278,27 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     //#endregion
     //#region Fetch Goods' Images
     const imageUrls = await exec(tab.id!, async () => {
-      const node = document.evaluate(
-        `//div[@id='imgTagWrapperId']/img`,
-        document,
-        null,
-        XPathResult.FIRST_ORDERED_NODE_TYPE,
-        null,
-      ).singleNodeValue as HTMLImageElement | null;
-      return node ? [node.getAttribute('src')!] : null;
+      let urls = [
+        ...(document.querySelectorAll('.imageThumbnail img') as unknown as HTMLImageElement[]),
+      ].map((e) => e.src);
+      // https://github.com/primedigitaltech/azon_seeker/issues/4
+      if (document.querySelector('.overlayRestOfImages')) {
+        const overlay = document.querySelector<HTMLDivElement>('.overlayRestOfImages')!;
+        if (document.querySelector<HTMLDivElement>('#ivThumbs')!.getClientRects().length === 0) {
+          overlay.click();
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+        urls = [
+          ...(document.querySelectorAll(
+            '#ivThumbs .ivThumbImage[style]',
+          ) as unknown as HTMLDivElement[]),
+        ].map((e) => e.style.background);
+        urls = urls.map((s) => {
+          const [url] = /(?<=url\(").+(?=")/.exec(s)!;
+          return url;
+        });
+      }
+      return urls;
     });
     imageUrls &&
       this.channel.emit('item-images-collected', {
@@ -280,6 +306,10 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
         urls: imageUrls,
       });
     //#endregion
+  }
+
+  public async stop(): Promise<void> {
+    this._interruptSignal = true;
   }
 }
 

@@ -32,8 +32,8 @@ const handleGetInfo = async () => {
         <n-input v-model:value="inputText" />
       </n-form-item>
     </n-form>
-    <n-button @click="handleGetInfo">Get Info</n-button>
-    <div>{{ data }}</div>
+    <n-button language="json" @click="handleGetInfo">Get Info</n-button>
+    <n-code>{{ data }}</n-code>
   </div>
 </template>
 
