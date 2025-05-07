@@ -23,12 +23,24 @@ const showHeader = ref(false);
 <template>
   <div class="side-panel">
     <div class="header-menu" v-if="showHeader">
-      <n-tabs placement="top" :default-value="tabs[0].name" type="card" v-model:value="selectedTab">
+      <n-tabs
+        placement="top"
+        :default-value="tabs[0].name"
+        type="segment"
+        :value="selectedTab"
+        @update:value="
+          (val) => {
+            if (tabs.findIndex((t) => t.name === val) !== -1) {
+              selectedTab = val;
+            }
+          }
+        "
+      >
         <n-tab v-for="tab in tabs" :name="tab.name" />
       </n-tabs>
     </div>
     <div class="display-header-button" @click="showHeader = !showHeader">
-      <n-icon size="22">
+      <n-icon size="18">
         <ion-chevron-up v-if="showHeader" />
         <ion-chevron-down v-else />
       </n-icon>
@@ -66,7 +78,7 @@ const showHeader = ref(false);
     cursor: pointer;
 
     > .n-icon {
-      opacity: 0.45;
+      opacity: 0.3;
     }
 
     &:hover {

@@ -36,11 +36,20 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     return tab;
   }
 
+  private async createNewTab(url: string): Promise<Tabs.Tab> {
+    const tab = await browser.tabs.create({
+      url,
+      active: true,
+    });
+    return tab;
+  }
+
   private async wanderSearchSinglePage(tab: Tabs.Tab) {
     const tabId = tab.id!;
     // #region Wait for the Next button to appear, indicating that the product items have finished loading
     await exec(tabId, async () => {
       await new Promise((resolve) => setTimeout(resolve, 500 + ~~(500 * Math.random())));
+      window.scrollBy(0, ~~(Math.random() * 500) + 500);
       while (!document.querySelector('.s-pagination-strip')) {
         window.scrollBy(0, ~~(Math.random() * 500) + 500);
         await new Promise((resolve) => setTimeout(resolve, ~~(Math.random() * 50) + 50));
@@ -159,15 +168,20 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
       this._interruptSignal = true;
     };
     this.channel.on('error', stop);
-    let result = {
-      hasNextPage: true,
-      data: [] as unknown[],
-    };
-    while (result.hasNextPage && !this._interruptSignal) {
-      result = await this.wanderSearchSinglePage(tab);
-      this.channel.emit('item-links-collected', {
-        objs: result.data as { link: string; title: string; imageSrc: string }[],
-      });
+    let offset = 0;
+    while (!this._interruptSignal) {
+      const { hasNextPage, data } = await this.wanderSearchSinglePage(tab);
+      const objs = data.map((r, i) => ({
+        ...r,
+        rank: offset + 1 + i,
+        createTime: new Date().toLocaleString(),
+        asin: /(?<=\/dp\/)[A-Z0-9]{10}/.exec(r.link as string)![0],
+      }));
+      this.channel.emit('item-links-collected', { objs });
+      offset += data.length;
+      if (!hasNextPage) {
+        break;
+      }
     }
     this._interruptSignal = false;
     this.channel.off('error', stop);
@@ -175,7 +189,6 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
   }
 
   public async wanderDetailPage(entry: string): Promise<void> {
-    const tab = await this.getCurrentTab();
     const params = { asin: '', url: '' };
     if (entry.match(/^https?:\/\/www\.amazon\.com.*\/dp\/[A-Z0-9]{10}/)) {
       const [asin] = /\/\/dp\/[A-Z0-9]{10}/.exec(entry)!;
@@ -185,16 +198,12 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
       params.asin = entry;
       params.url = `https://www.amazon.com/dp/${entry}`;
     }
-    if (!tab.url?.includes(`www.amazon.com`) || !tab.url?.includes(`/dp/${params.asin}`)) {
-      await browser.tabs.update(tab.id!, {
-        url: params.url,
-      });
-      await new Promise<void>((resolve) => setTimeout(resolve, 1000));
-    }
+    const tab = await this.createNewTab(params.url);
     //#region Await Production Introduction Element Loaded and Determine Page Pattern
     const pattern = await exec(tab.id!, async () => {
+      window.scrollBy(0, ~~(Math.random() * 500) + 500);
       let targetNode = document.querySelector('#prodDetails, #detailBulletsWrapper_feature_div');
-      while (!targetNode) {
+      while (!targetNode || document.readyState === 'loading') {
         window.scrollBy(0, ~~(Math.random() * 500) + 500);
         await new Promise((resolve) => setTimeout(resolve, ~~(Math.random() * 50) + 50));
         targetNode = document.querySelector('#prodDetails, #detailBulletsWrapper_feature_div');
@@ -258,13 +267,17 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
         break;
     }
     if (rawRankingText) {
-      const [category1Statement, category2Statement] = rawRankingText.split('\n');
+      let statement = /#[0-9,]+\sin\s\S[\s\w&\(\)]+/.exec(rawRankingText)![0]!;
+      const category1Name = /(?<=in\s).+(?=\s\(See)/.exec(statement)?.[0] || null;
       const category1Ranking =
-        Number(/(?<=#)[0-9,]+/.exec(category1Statement)?.[0].replace(',', '')) || null; // "," should be removed
-      const category1Name = /(?<=in\s).+(?=\s\(See)/.exec(category1Statement)?.[0] || null;
+        Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replace(',', '')) || null;
+
+      rawRankingText = rawRankingText.replace(statement, '');
+      statement = /#[0-9,]+\sin\s\S[\s\w&\(\)]+/.exec(rawRankingText)![0]!;
+      const category2Name = /(?<=in\s).+/.exec(statement)?.[0].replace(/[\s]+$/, '') || null;
       const category2Ranking =
-        Number(/(?<=#)[0-9,]+/.exec(category2Statement)?.[0].replace(',', '')) || null; // "," should be removed
-      const category2Name = /(?<=in\s).+/.exec(category2Statement)?.[0] || null;
+        Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replace(',', '')) || null;
+
       this.channel.emit('item-category-rank-collected', {
         asin: params.asin,
         category1: ![category1Name, category1Ranking].includes(null)
@@ -281,7 +294,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
       let urls = [
         ...(document.querySelectorAll('.imageThumbnail img') as unknown as HTMLImageElement[]),
       ].map((e) => e.src);
-      // https://github.com/primedigitaltech/azon_seeker/issues/4
+      //#region process more images https://github.com/primedigitaltech/azon_seeker/issues/4
       if (document.querySelector('.overlayRestOfImages')) {
         const overlay = document.querySelector<HTMLDivElement>('.overlayRestOfImages')!;
         if (document.querySelector<HTMLDivElement>('#ivThumbs')!.getClientRects().length === 0) {
@@ -298,14 +311,27 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
           return url;
         });
       }
+      //#endregion
+      //#region post-process image urls
+      urls = urls.map((rawUrl) => {
+        const imgUrl = new URL(rawUrl);
+        const paths = imgUrl.pathname.split('/');
+        const chunks = paths[paths.length - 1].split('.');
+        const [name, ext] = [chunks[0], chunks[chunks.length - 1]];
+        paths[paths.length - 1] = `${name}.${ext}`;
+        imgUrl.pathname = paths.join('/');
+        return imgUrl.toString();
+      });
+      //#endregion
       return urls;
     });
     imageUrls &&
       this.channel.emit('item-images-collected', {
-        asin: entry,
-        urls: imageUrls,
+        asin: params.asin,
+        imageUrls,
       });
     //#endregion
+    await browser.tabs.remove(tab.id!);
   }
 
   public async stop(): Promise<void> {
