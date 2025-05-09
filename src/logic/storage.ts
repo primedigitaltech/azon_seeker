@@ -1,7 +1,9 @@
 import { useWebExtensionStorage } from '~/composables/useWebExtensionStorage';
 import type { AmazonDetailItem, AmazonItem, AmazonSearchItem } from './page-worker/types';
 
-export const keywords = useWebExtensionStorage<string>('keywords', '');
+export const keywordsList = useWebExtensionStorage<string[]>('keywordsList', ['']);
+
+export const asinInputText = useWebExtensionStorage<string>('asinInputText', '');
 
 export const searchItems = useWebExtensionStorage<AmazonSearchItem[]>('itemList', []);
 

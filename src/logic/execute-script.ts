@@ -40,6 +40,7 @@ export async function exec<T, P extends Record<string, unknown>>(
   const ret = injectResults.pop();
   if (ret?.error) {
     console.error('注入脚本时发生错误', ret.error);
+    throw new Error('注入脚本时发生错误');
   }
   return ret?.result as T | null;
 }

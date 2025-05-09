@@ -35,6 +35,7 @@ const filterFormItems = computed(() => {
     },
   ];
 });
+
 const onFilterReset = () => {
   Object.assign(filter, {
     keywords: null as string | null,
@@ -74,7 +75,7 @@ const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
     minWidth: 130,
   },
   {
-    title: '图片',
+    title: '封面图',
     key: 'imageSrc',
     hidden: true,
   },
@@ -84,7 +85,7 @@ const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
     minWidth: 160,
   },
   {
-    title: '操作',
+    title: '链接',
     key: 'link',
     render(row) {
       return h(
@@ -106,14 +107,15 @@ const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
   },
 ];
 
-const itemView = computed<{ records: AmazonItem[]; pageCount: number }>(() => {
-  const { current, size } = page;
-  let data = filterItemData(allItems.value); // Filter Data
-  let pageCount = ~~(data.length / size);
-  pageCount += data.length % size > 0 ? 1 : 0;
-  data = data.slice((current - 1) * size, current * size);
-  return { records: data, pageCount };
-});
+const itemView = computed<{ records: AmazonItem[]; pageCount: number; origin: AmazonItem[] }>(
+  () => {
+    const { current, size } = page;
+    let data = filterItemData(allItems.value); // Filter Data
+    let pageCount = ~~(data.length / size);
+    pageCount += data.length % size > 0 ? 1 : 0;
+    return { records: data.slice((current - 1) * size, current * size), pageCount, origin: data };
+  },
+);
 
 const extraHeaders: Header[] = [
   {
@@ -166,7 +168,7 @@ const handleExport = async () => {
       [] as { label: string; prop: string }[],
     )
     .concat(extraHeaders);
-  const data = filterItemData(allItems.value);
+  const { origin: data } = itemView.value;
   exportToXLSX(data, { headers });
   message.info('导出完成');
 };
@@ -202,7 +204,7 @@ const handleClearData = async () => {
     <n-card class="result-content-container">
       <template #header>
         <n-space>
-          <div style="padding-right: 10px">结果框</div>
+          <div style="padding-right: 10px">结果数据表</div>
           <n-switch size="small" class="filter-switch" v-model:value="filter.detailOnly">
             <template #checked> 详情 </template>
             <template #unchecked> 全部</template>

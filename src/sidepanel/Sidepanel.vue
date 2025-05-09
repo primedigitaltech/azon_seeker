@@ -17,7 +17,7 @@ const currentComponent = computed(() => {
   const tab = tabs.find((tab) => tab.name === selectedTab.value);
   return tab ? tab.component : null;
 });
-const showHeader = ref(false);
+const showHeader = ref(true);
 </script>
 
 <template>

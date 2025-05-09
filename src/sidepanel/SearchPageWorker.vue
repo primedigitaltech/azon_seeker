@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { keywords } from '~/logic/storage';
+import { keywordsList } from '~/logic/storage';
 import pageWorker from '~/logic/page-worker';
-import type { AmazonSearchItem } from '~/logic/page-worker/types';
 import { NButton } from 'naive-ui';
 import { searchItems } from '~/logic/storage';
 
@@ -11,12 +10,13 @@ const worker = pageWorker.useAmazonPageWorker();
 worker.channel.on('error', ({ message: msg }) => {
   timelines.value.push({
     type: 'error',
-    title: '错误',
+    title: '错误发生',
     time: new Date().toLocaleString(),
     content: msg,
   });
   message.error(msg);
   worker.stop();
+  running.value = false;
 });
 worker.channel.on('item-links-collected', ({ objs }) => {
   timelines.value.push({
@@ -25,16 +25,10 @@ worker.channel.on('item-links-collected', ({ objs }) => {
     time: new Date().toLocaleString(),
     content: `成功采集到 ${objs.length} 条数据`,
   });
-  const addedRows = objs.map<AmazonSearchItem>((v) => {
-    return {
-      ...v,
-      keywords: keywords.value,
-    };
-  });
-  searchItems.value = searchItems.value.concat(addedRows);
+  searchItems.value = searchItems.value.concat(objs); // Add records
 });
 //#endregion
-const workerRunning = ref(false);
+const running = ref(false);
 
 const timelines = ref<
   {
@@ -45,36 +39,28 @@ const timelines = ref<
   }[]
 >([]);
 
-const onCollectStart = async () => {
-  workerRunning.value = true;
-  timelines.value = [
-    {
+const handleFetchInfoFromPage = async () => {
+  running.value = true;
+  timelines.value = [];
+  for (const keywords of keywordsList.value.filter((k) => k.trim() !== '')) {
+    timelines.value.push({
       type: 'info',
       title: '开始',
       time: new Date().toLocaleString(),
-      content: '开始数据采集',
-    },
-  ];
-  if (keywords.value.trim() === '') {
-    return;
+      content: `开始关键词：${keywords} 数据采集`,
+    });
+    //#region start page worker
+    await worker.doSearch(keywords);
+    await worker.wanderSearchPage();
+    //#endregion
+    timelines.value.push({
+      type: 'info',
+      title: '结束',
+      time: new Date().toLocaleString(),
+      content: `关键词: ${keywords} 数据采集完成`,
+    });
   }
-  //#region start page worker
-  await worker.doSearch(keywords.value);
-  await worker.wanderSearchPage();
-  //#endregion
-  timelines.value.push({
-    type: 'info',
-    title: '结束',
-    time: new Date().toLocaleString(),
-    content: '数据采集完成',
-  });
-  workerRunning.value = false;
-};
-
-const onCollectStop = async () => {
-  workerRunning.value = false;
-  worker.stop();
-  message.info('停止收集');
+  running.value = false;
 };
 </script>
 
@@ -85,39 +71,28 @@ const onCollectStop = async () => {
       <mdi-cat style="font-size: 60px; color: black" />
       <h1>Search Page</h1>
     </n-space>
-    <div class="interactive-section">
-      <n-space>
-        <n-input
-          :disabled="workerRunning"
-          v-model:value="keywords"
-          class="search-input-box"
-          autosize
-          size="large"
-          round
-          placeholder="请输入关键词采集信息"
-        >
-          <template #prefix>
-            <n-icon size="20">
-              <ion-search />
-            </n-icon>
-          </template>
-        </n-input>
-        <n-button
-          type="primary"
-          round
-          size="large"
-          @click="!workerRunning ? onCollectStart() : onCollectStop()"
-        >
-          <template #icon>
-            <n-icon v-if="!workerRunning" size="20">
-              <ant-design-thunderbolt-outlined />
-            </n-icon>
-            <n-icon v-else size="20">
-              <ion-stop-outline />
-            </n-icon>
-          </template>
-        </n-button>
-      </n-space>
+    <div v-if="!running" class="interactive-section">
+      <n-dynamic-input
+        v-model:value="keywordsList"
+        :min="1"
+        :max="10"
+        class="search-input-box"
+        autosize
+        size="large"
+        round
+        placeholder="请输入关键词采集信息"
+      />
+      <n-button type="primary" round size="large" @click="handleFetchInfoFromPage()">
+        <template #icon>
+          <n-icon>
+            <ant-design-thunderbolt-outlined />
+          </n-icon>
+        </template>
+        开始
+      </n-button>
+    </div>
+    <div v-else class="running-tip-section">
+      <n-alert title="Warning" type="warning"> 警告，在插件运行期间请勿与浏览器交互。 </n-alert>
     </div>
     <div style="height: 10px"></div>
     <progress-report class="progress-report" :timelines="timelines" />
@@ -134,17 +109,28 @@ const onCollectStop = async () => {
   gap: 20px;
 
   .app-title {
-    margin-top: 60px;
+    margin-top: 20px;
   }
 
   .interactive-section {
-    padding: 10px 15px;
     border-radius: 10px;
-    border: 1px #00000020 dashed;
+    width: 80%;
+    outline: 1px #00000020 dashed;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    gap: 15px;
+    padding: 15px 25px;
 
     .search-input-box {
       min-width: 240px;
     }
+  }
+
+  .running-tip-section {
+    border-radius: 10px;
+    cursor: wait;
   }
 
   .progress-report {

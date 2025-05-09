@@ -19,7 +19,7 @@ defineProps<{
         :title="item.title"
         :time="item.time"
       >
-        {{ item.content }}
+        <div v-for="line in item.content.split('\n')">{{ line }}</div>
       </n-timeline-item>
     </n-timeline>
     <n-empty v-else size="large">

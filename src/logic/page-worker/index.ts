@@ -1,7 +1,29 @@
 import Emittery from 'emittery';
-import type { AmazonPageWorker, AmazonPageWorkerEvents } from './types';
+import type { AmazonDetailItem, AmazonPageWorker, AmazonPageWorkerEvents } from './types';
 import type { Tabs } from 'webextension-polyfill';
 import { exec } from '../execute-script';
+
+/**
+ * Process unknown errors.
+ */
+function withErrorHandling(
+  target: (this: AmazonPageWorker, ...args: any[]) => Promise<any>,
+  _context: ClassMethodDecoratorContext,
+): (this: AmazonPageWorker, ...args: any[]) => Promise<any> {
+  // target 就是当前被装饰的 class 方法
+  const originalMethod = target;
+  // 定义一个新方法
+  const decoratedMethod = async function (this: AmazonPageWorker, ...args: any[]) {
+    try {
+      return await originalMethod.call(this, ...args); // 调用原有方法
+    } catch (error) {
+      this.channel.emit('error', { message: `发生未知错误：${error}` });
+      throw error;
+    }
+  };
+  // 返回装饰后的方法
+  return decoratedMethod;
+}
 
 /**
  * AmazonPageWorkerImpl can run on background & sidepanel & popup,
@@ -27,7 +49,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
   /**
    * The signal to interrupt the current operation.
    */
-  private _interruptSignal = false;
+  private _isCancel = false;
 
   private async getCurrentTab(): Promise<Tabs.Tab> {
     const tab = await browser.tabs
@@ -49,10 +71,14 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     // #region Wait for the Next button to appear, indicating that the product items have finished loading
     await exec(tabId, async () => {
       await new Promise((resolve) => setTimeout(resolve, 500 + ~~(500 * Math.random())));
-      window.scrollBy(0, ~~(Math.random() * 500) + 500);
-      while (!document.querySelector('.s-pagination-strip')) {
+      while (true) {
+        const target = document.querySelector('.s-pagination-strip');
         window.scrollBy(0, ~~(Math.random() * 500) + 500);
-        await new Promise((resolve) => setTimeout(resolve, ~~(Math.random() * 50) + 50));
+        await new Promise((resolve) => setTimeout(resolve, ~~(Math.random() * 50) + 500));
+        if (target || document.readyState === 'complete') {
+          target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          break;
+        }
       }
     });
     // #endregion
@@ -77,11 +103,11 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
       // 处理商品以列表形式展示的情况
       case 'pattern-1':
         data = await exec(tabId, async () => {
-          const items = [
-            ...(document.querySelectorAll<HTMLDivElement>(
+          const items = Array.from(
+            document.querySelectorAll<HTMLDivElement>(
               '.puisg-row:has(.a-section.a-spacing-small.a-spacing-top-small:not(.a-text-right))',
-            ) as unknown as HTMLDivElement[]),
-          ].filter((e) => e.getClientRects().length > 0);
+            ),
+          ).filter((e) => e.getClientRects().length > 0);
           const linkObjs = items.reduce<{ link: string; title: string; imageSrc: string }[]>(
             (objs, el) => {
               const link = el.querySelector<HTMLAnchorElement>('a')?.href;
@@ -100,11 +126,11 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
       // 处理商品以二维图片格展示的情况
       case 'pattern-2':
         data = await exec(tabId, async () => {
-          const items = [
-            ...(document.querySelectorAll<HTMLDivElement>(
+          const items = Array.from(
+            document.querySelectorAll<HTMLDivElement>(
               '.puis-card-container:has(.a-section.a-spacing-small.puis-padding-left-small)',
-            ) as unknown as HTMLDivElement[]),
-          ].filter((e) => e.getClientRects().length > 0);
+            ) as unknown as HTMLDivElement[],
+          ).filter((e) => e.getClientRects().length > 0);
           const linkObjs = items.reduce<{ link: string; title: string; imageSrc: string }[]>(
             (objs, el) => {
               const link = el.querySelector<HTMLAnchorElement>('a.a-link-normal')?.href;
@@ -134,7 +160,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
           return false;
         }
       } else {
-        throw new Error('Error: next page button not found');
+        return false;
       }
     });
     // #endregion
@@ -146,6 +172,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     return { data, hasNextPage };
   }
 
+  @withErrorHandling
   public async doSearch(keywords: string): Promise<string> {
     const url = new URL('https://www.amazon.com/s');
     url.searchParams.append('k', keywords);
@@ -161,18 +188,20 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     return url.toString();
   }
 
+  @withErrorHandling
   public async wanderSearchPage(): Promise<void> {
     const tab = await this.getCurrentTab();
-    this._interruptSignal = false;
-    const stop = async (_: unknown): Promise<void> => {
-      this._interruptSignal = true;
-    };
-    this.channel.on('error', stop);
+    this._isCancel = false;
+    const stop = this.channel.on('error', async (_: unknown): Promise<void> => {
+      this._isCancel = true;
+    });
     let offset = 0;
-    while (!this._interruptSignal) {
+    while (!this._isCancel) {
       const { hasNextPage, data } = await this.wanderSearchSinglePage(tab);
+      const keywords = new URL(tab.url!).searchParams.get('k')!;
       const objs = data.map((r, i) => ({
         ...r,
+        keywords,
         rank: offset + 1 + i,
         createTime: new Date().toLocaleString(),
         asin: /(?<=\/dp\/)[A-Z0-9]{10}/.exec(r.link as string)![0],
@@ -183,12 +212,14 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
         break;
       }
     }
-    this._interruptSignal = false;
+    this._isCancel = false;
     this.channel.off('error', stop);
     return new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
+  @withErrorHandling
   public async wanderDetailPage(entry: string): Promise<void> {
+    //#region Initial Meta Info
     const params = { asin: '', url: '' };
     if (entry.match(/^https?:\/\/www\.amazon\.com.*\/dp\/[A-Z0-9]{10}/)) {
       const [asin] = /\/\/dp\/[A-Z0-9]{10}/.exec(entry)!;
@@ -198,18 +229,30 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
       params.asin = entry;
       params.url = `https://www.amazon.com/dp/${entry}`;
     }
-    const tab = await this.createNewTab(params.url);
+    let tab = await this.getCurrentTab();
+    if (!tab.url || !tab.url.startsWith('http')) {
+      tab = await this.createNewTab(params.url);
+    } else {
+      tab = await browser.tabs.update(tab.id, {
+        url: params.url,
+      });
+    }
+    //#endregion
     //#region Await Production Introduction Element Loaded and Determine Page Pattern
-    const pattern = await exec(tab.id!, async () => {
-      window.scrollBy(0, ~~(Math.random() * 500) + 500);
-      let targetNode = document.querySelector('#prodDetails, #detailBulletsWrapper_feature_div');
-      while (!targetNode || document.readyState === 'loading') {
+    await exec(tab.id!, async () => {
+      while (true) {
         window.scrollBy(0, ~~(Math.random() * 500) + 500);
         await new Promise((resolve) => setTimeout(resolve, ~~(Math.random() * 50) + 50));
-        targetNode = document.querySelector('#prodDetails, #detailBulletsWrapper_feature_div');
+        const targetNode = document.querySelector(
+          '#prodDetails:has(td), #detailBulletsWrapper_feature_div:has(li)',
+        );
+        if (targetNode && document.readyState !== 'loading') {
+          targetNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return targetNode.getAttribute('id') === 'prodDetails' ? 'pattern-1' : 'pattern-2';
+        }
       }
-      return targetNode.getAttribute('id') === 'prodDetails' ? 'pattern-1' : 'pattern-2';
     });
+    await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait 3 seconds.
     //#endregion
     //#region Fetch Rating Info
     const ratingInfo = await exec(tab.id!, async () => {
@@ -237,55 +280,49 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     }
     //#endregion
     //#region Fetch Category Rank Info
-    let rawRankingText: string | null = null;
-    switch (pattern) {
-      case 'pattern-1':
-        rawRankingText = await exec(tab.id!, async () => {
-          const xpathExp = `//div[@id='prodDetails']//table/tbody/tr[th[1][contains(text(), 'Best Sellers Rank')]]/td`;
-          const targetNode = document.evaluate(
-            xpathExp,
-            document,
-            null,
-            XPathResult.FIRST_ORDERED_NODE_TYPE,
-            null,
-          ).singleNodeValue as HTMLDivElement | null;
-          return targetNode?.innerText || null;
-        });
-        break;
-      case 'pattern-2':
-        rawRankingText = await exec(tab.id!, async () => {
-          const xpathExp = `//div[@id='detailBulletsWrapper_feature_div']//ul[.//li[contains(., 'Best Sellers Rank')]]//span[@class='a-list-item']`;
-          const targetNode = document.evaluate(
-            xpathExp,
-            document,
-            null,
-            XPathResult.FIRST_ORDERED_NODE_TYPE,
-            null,
-          ).singleNodeValue as HTMLDivElement | null;
-          return targetNode?.innerText || null;
-        });
-        break;
-    }
+    let rawRankingText: string | null = await exec(tab.id!, async () => {
+      const xpathExps = [
+        `//div[@id='detailBulletsWrapper_feature_div']//ul[.//li[contains(., 'Best Sellers Rank')]]//span[@class='a-list-item']`,
+        `//div[@id='prodDetails']//table/tbody/tr[th[1][contains(text(), 'Best Sellers Rank')]]/td`,
+        `//div[@id='productDetails_db_sections']//table/tbody/tr[th[1][contains(text(), 'Best Sellers Rank')]]/td`,
+      ];
+      for (const xpathExp of xpathExps) {
+        const targetNode = document.evaluate(
+          xpathExp,
+          document,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+          null,
+        ).singleNodeValue as HTMLDivElement | null;
+        if (targetNode) {
+          targetNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return targetNode.innerText;
+        }
+      }
+      return null;
+    });
     if (rawRankingText) {
-      let statement = /#[0-9,]+\sin\s\S[\s\w&\(\)]+/.exec(rawRankingText)![0]!;
-      const category1Name = /(?<=in\s).+(?=\s\(See)/.exec(statement)?.[0] || null;
-      const category1Ranking =
-        Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replace(',', '')) || null;
-
-      rawRankingText = rawRankingText.replace(statement, '');
-      statement = /#[0-9,]+\sin\s\S[\s\w&\(\)]+/.exec(rawRankingText)![0]!;
-      const category2Name = /(?<=in\s).+/.exec(statement)?.[0].replace(/[\s]+$/, '') || null;
-      const category2Ranking =
-        Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replace(',', '')) || null;
-
+      const info: Pick<AmazonDetailItem, 'category1' | 'category2'> = {};
+      let statement = /#[0-9,]+\sin\s\S[\s\w&\(\)]+/.exec(rawRankingText)?.[0];
+      if (statement) {
+        const name = /(?<=in\s).+(?=\s\(See)/.exec(statement)?.[0] || null;
+        const rank = Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replace(',', '')) || null;
+        if (name && rank) {
+          info['category1'] = { name, rank };
+        }
+        rawRankingText = rawRankingText.replace(statement, '');
+      }
+      statement = /#[0-9,]+\sin\s\S[\s\w&\(\)]+/.exec(rawRankingText)?.[0];
+      if (statement) {
+        const name = /(?<=in\s).+/.exec(statement)?.[0].replace(/[\s]+$/, '') || null;
+        const rank = Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replace(',', '')) || null;
+        if (name && rank) {
+          info['category2'] = { name, rank };
+        }
+      }
       this.channel.emit('item-category-rank-collected', {
         asin: params.asin,
-        category1: ![category1Name, category1Ranking].includes(null)
-          ? { name: category1Name!, rank: category1Ranking! }
-          : undefined,
-        category2: ![category2Name, category2Ranking].includes(null)
-          ? { name: category2Name!, rank: category2Ranking! }
-          : undefined,
+        ...info,
       });
     }
     //#endregion
@@ -295,8 +332,8 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
         ...(document.querySelectorAll('.imageThumbnail img') as unknown as HTMLImageElement[]),
       ].map((e) => e.src);
       //#region process more images https://github.com/primedigitaltech/azon_seeker/issues/4
-      if (document.querySelector('.overlayRestOfImages')) {
-        const overlay = document.querySelector<HTMLDivElement>('.overlayRestOfImages')!;
+      const overlay = document.querySelector<HTMLDivElement>('.overlayRestOfImages');
+      if (overlay) {
         if (document.querySelector<HTMLDivElement>('#ivThumbs')!.getClientRects().length === 0) {
           overlay.click();
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -310,6 +347,10 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
           const [url] = /(?<=url\(").+(?=")/.exec(s)!;
           return url;
         });
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        document
+          .querySelector<HTMLButtonElement>(".a-popover button[data-action='a-popover-close']")
+          ?.click();
       }
       //#endregion
       //#region post-process image urls
@@ -331,11 +372,11 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
         imageUrls,
       });
     //#endregion
-    await browser.tabs.remove(tab.id!);
+    await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds.
   }
 
   public async stop(): Promise<void> {
-    this._interruptSignal = true;
+    this._isCancel = true;
   }
 }
 

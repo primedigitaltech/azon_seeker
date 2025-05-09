@@ -25,7 +25,7 @@ interface AmazonPageWorkerEvents {
   /**
    * The event is fired when worker collected links to items on the Amazon search page.
    */
-  ['item-links-collected']: { objs: Omit<AmazonSearchItem, 'keywords'>[] };
+  ['item-links-collected']: { objs: AmazonSearchItem[] };
 
   /**
    * The event is fired when worker collected goods' rating on the Amazon detail page.

@@ -76,6 +76,9 @@ export function exportToXLSX(
   const worksheet = utils.json_to_sheet(rows, {
     header: headers.map((h) => h.label),
   });
+  worksheet['!autofilter'] = {
+    ref: utils.encode_range({ c: 0, r: 0 }, { c: headers.length - 1, r: rows.length }),
+  }; // Use Auto Filter： https://github.com/SheetJS/sheetjs/issues/472#issuecomment-292852308
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, worksheet, 'Sheet1');
   const fileName = options.fileName || `export_${new Date().toISOString().slice(0, 10)}.xlsx`;

@@ -1,26 +1,18 @@
 <script setup lang="ts">
-import type { FormRules, UploadOnChange } from 'naive-ui';
+import type { FormItemRule, UploadOnChange } from 'naive-ui';
 import pageWorkerFactory from '~/logic/page-worker';
-import { detailItems } from '~/logic/storage';
+import { asinInputText, detailItems } from '~/logic/storage';
 
 const message = useMessage();
 
-const formItem = reactive({ asin: '' });
-const formRef = useTemplateRef('detail-form');
-const formRules: FormRules = {
-  asin: [
-    {
-      required: true,
-      trigger: ['submit', 'blur'],
-      message: '请输入格式正确的ASIN',
-      validator: (_rule, val: string) => {
-        return (
-          typeof val === 'string' &&
-          val.match(/^[A-Z0-9]{10}((\n|\s|,|;)[A-Z0-9]{10})*\n?$/g) !== null
-        );
-      },
-    },
-  ],
+const formItemRef = useTemplateRef('detail-form-item');
+const formItemRule: FormItemRule = {
+  required: true,
+  trigger: ['submit', 'blur'],
+  message: '请输入格式正确的ASIN',
+  validator: () => {
+    return asinInputText.value.match(/^[A-Z0-9]{10}((\n|\s|,|;)[A-Z0-9]{10})*\n?$/g) !== null;
+  },
 };
 
 const timelines = ref<
@@ -32,20 +24,23 @@ const timelines = ref<
   }[]
 >([]);
 
+const running = ref(false);
+
 const worker = pageWorkerFactory.useAmazonPageWorker(); // 获取Page Worker单例
 worker.channel.on('error', ({ message: msg }) => {
   timelines.value.push({
     type: 'error',
-    title: '错误',
+    title: '错误发生',
     time: new Date().toLocaleString(),
     content: msg,
   });
   message.error(msg);
+  running.value = false;
 });
 worker.channel.on('item-rating-collected', (ev) => {
   timelines.value.push({
     type: 'success',
-    title: `商品: ${ev.asin}`,
+    title: `商品${ev.asin}评价信息`,
     time: new Date().toLocaleString(),
     content: `评分： ${ev.rating}；评价数：${ev.ratingCount}`,
   });
@@ -54,7 +49,7 @@ worker.channel.on('item-rating-collected', (ev) => {
 worker.channel.on('item-category-rank-collected', (ev) => {
   timelines.value.push({
     type: 'success',
-    title: `商品: ${ev.asin}`,
+    title: `商品${ev.asin}分类排名`,
     time: new Date().toLocaleString(),
     content: [
       ev.category1 ? `#${ev.category1.rank} in ${ev.category1.name}` : '',
@@ -66,7 +61,7 @@ worker.channel.on('item-category-rank-collected', (ev) => {
 worker.channel.on('item-images-collected', (ev) => {
   timelines.value.push({
     type: 'success',
-    title: `商品: ${ev.asin}`,
+    title: `商品${ev.asin}图像`,
     time: new Date().toLocaleString(),
     content: `图片数： ${ev.imageUrls.length}`,
   });
@@ -81,7 +76,7 @@ const handleImportAsin: UploadOnChange = ({ fileList }) => {
       reader.onload = (e) => {
         const content = e.target?.result;
         if (typeof content === 'string') {
-          formItem.asin = content;
+          asinInputText.value = content;
         }
       };
       reader.readAsText(file.file, 'utf-8');
@@ -90,7 +85,7 @@ const handleImportAsin: UploadOnChange = ({ fileList }) => {
 };
 
 const handleExportAsin = () => {
-  const blob = new Blob([formItem.asin], { type: 'text/plain' });
+  const blob = new Blob([asinInputText.value], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const filename = `asin-${new Date().toISOString()}.txt`;
   const link = document.createElement('a');
@@ -103,33 +98,39 @@ const handleExportAsin = () => {
   message.info('导出完成');
 };
 
-const handleGetInfo = () => {
-  formRef.value?.validate(async (errors) => {
-    if (errors) {
-      message.error('格式错误，请检查输入');
-      return;
-    }
-    const asinList = formItem.asin.split(/\n|\s|,|;/).filter((item) => item.length > 0);
-    if (asinList.length > 0) {
-      timelines.value = [
-        {
-          type: 'info',
-          title: '开始',
-          time: new Date().toLocaleString(),
-          content: '开始数据采集',
-        },
-      ];
-      for (const asin of asinList) {
-        await worker.wanderDetailPage(asin);
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-      }
-      timelines.value.push({
+const handleFetchInfoFromPage = () => {
+  const runTask = async () => {
+    const asinList = asinInputText.value.split(/\n|\s|,|;/).filter((item) => item.length > 0);
+    running.value = true;
+    timelines.value = [
+      {
         type: 'info',
-        title: '结束',
+        title: '开始',
         time: new Date().toLocaleString(),
-        content: '数据采集完成',
-      });
+        content: '开始数据采集',
+      },
+    ];
+    while (asinList.length > 0) {
+      const asin = asinList.shift()!;
+      await worker.wanderDetailPage(asin);
+      asinInputText.value = asinList.join('\n'); // Update Input Text
     }
+    timelines.value.push({
+      type: 'info',
+      title: '结束',
+      time: new Date().toLocaleString(),
+      content: '数据采集完成',
+    });
+    running.value = false;
+  };
+  formItemRef.value?.validate({
+    callback: (errors) => {
+      if (errors) {
+        return;
+      } else {
+        runTask();
+      }
+    },
   });
 };
 </script>
@@ -138,10 +139,10 @@ const handleGetInfo = () => {
   <div class="detail-page-worker">
     <header-menu />
     <div class="title">
-      <n-icon :size="60"> <mdi-cat style="color: black" /> </n-icon>
+      <mdi-cat style="color: black; font-size: 60px" />
       <h1 style="font-size: 30px; color: black">Detail Page</h1>
     </div>
-    <div class="interative-section">
+    <div v-if="!running" class="interative-section">
       <n-space>
         <n-upload @change="handleImportAsin" accept=".txt" :max="1">
           <n-button round size="small">
@@ -158,22 +159,28 @@ const handleGetInfo = () => {
           导出
         </n-button>
       </n-space>
-      <n-form :rules="formRules" :model="formItem" ref="detail-form" label-placement="left">
-        <n-form-item style="padding-top: 0px" path="asin">
-          <n-input
-            v-model:value="formItem.asin"
-            placeholder="输入ASINs"
-            type="textarea"
-            size="large"
-          />
-        </n-form-item>
-      </n-form>
-      <n-button class="start-button" round size="large" type="primary" @click="handleGetInfo">
+      <n-form-item
+        ref="detail-form-item"
+        label-placement="left"
+        :rule="formItemRule"
+        style="padding-top: 0px"
+      >
+        <n-input
+          v-model:value="asinInputText"
+          placeholder="输入ASINs"
+          type="textarea"
+          size="large"
+        />
+      </n-form-item>
+      <n-button round size="large" type="primary" @click="handleFetchInfoFromPage">
         <template #icon>
           <ant-design-thunderbolt-outlined />
         </template>
         开始
       </n-button>
+    </div>
+    <div v-else class="running-tip-section">
+      <n-alert title="Warning" type="warning"> 警告，在插件运行期间请勿与浏览器交互。 </n-alert>
     </div>
     <progress-report class="progress-report" :timelines="timelines" />
   </div>
@@ -189,6 +196,7 @@ const handleGetInfo = () => {
 
   .title {
     margin: 20px 0 30px 0;
+    font-size: 60px;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -200,11 +208,20 @@ const handleGetInfo = () => {
   .interative-section {
     display: flex;
     flex-direction: column;
+    padding: 15px;
+    align-items: stretch;
+    justify-content: center;
     width: 85%;
-    padding: 15px 15px;
     border-radius: 10px;
     border: 1px #00000020 dashed;
     margin: 0 0 10px 0;
+  }
+
+  .running-tip-section {
+    margin: 0 0 10px 0;
+    height: 100px;
+    border-radius: 10px;
+    cursor: wait;
   }
 
   .progress-report {
