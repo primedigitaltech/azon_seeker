@@ -1,10 +1,9 @@
 import { StorageSerializers } from '@vueuse/core';
-import { pausableWatch, toValue, tryOnScopeDispose } from '@vueuse/shared';
+import { debounceFilter, pausableWatch, tryOnScopeDispose } from '@vueuse/shared';
 import { ref, shallowRef } from 'vue-demi';
 import { storage } from 'webextension-polyfill';
 
-import type { StorageLikeAsync, UseStorageAsyncOptions } from '@vueuse/core';
-import type { MaybeRefOrGetter, RemovableRef } from '@vueuse/shared';
+import type { RemovableRef, StorageLikeAsync, UseStorageAsyncOptions } from '@vueuse/core';
 import type { Ref } from 'vue-demi';
 import type { Storage } from 'webextension-polyfill';
 
@@ -50,95 +49,79 @@ const storageInterface: StorageLikeAsync = {
 /**
  * https://github.com/vueuse/vueuse/blob/658444bf9f8b96118dbd06eba411bb6639e24e88/packages/core/useStorageAsync/index.ts
  *
- * @param key
- * @param initialValue
- * @param options
+ * A custom hook for managing state with Web Extension storage.
+ * This function allows you to synchronize a reactive state with the Web Extension storage API.
+ *
+ * @param key - The key under which the value is stored in the Web Extension storage.
+ * @param initialValue - The initial value to be used if no value is found in storage.
+ *                                      This can be a reactive reference or a plain value.
+ * @param options - Optional settings for the storage behavior.
+ *
+ * @returns A reactive reference to the stored value. The reference can be
+ *                            removed from the storage by calling its `remove` method.
+ *
+ * @example
+ * const myValue = useWebExtensionStorage2('myKey', 'defaultValue', {
+ *   shallow: true,
+ *   listenToStorageChanges: true,
+ * });
+ *
+ * // myValue is now a reactive reference that syncs with the Web Extension storage.
  */
 export function useWebExtensionStorage<T>(
   key: string,
-  initialValue: MaybeRefOrGetter<T>,
-  options: WebExtensionStorageOptions<T> = {},
+  initialValue: MaybeRef<T>,
+  options: Pick<
+    WebExtensionStorageOptions<T>,
+    'shallow' | 'serializer' | 'listenToStorageChanges' | 'flush' | 'deep' | 'eventFilter'
+  > = {},
 ): RemovableRef<T> {
   const {
+    shallow = false,
+    listenToStorageChanges = true,
     flush = 'pre',
     deep = true,
-    listenToStorageChanges = true,
-    writeDefaults = true,
-    mergeDefaults = false,
-    shallow,
-    eventFilter,
-    onError = (e) => {
-      console.error(e);
-    },
+    eventFilter = debounceFilter(1000),
   } = options;
 
-  const rawInit: T = toValue(initialValue);
+  const rawInit = unref(initialValue);
   const type = guessSerializerType(rawInit);
+  const data = (shallow ? shallowRef : ref)(rawInit) as Ref<T>;
 
-  const data = (shallow ? shallowRef : ref)(initialValue) as Ref<T>;
   const serializer = options.serializer ?? StorageSerializers[type];
 
-  async function read(event?: { key: string; newValue: string | null }) {
-    if (event && event.key !== key) return;
-
-    try {
-      const rawValue = event
-        ? event.newValue
-        : await storageInterface.getItem(key);
-      if (rawValue == null) {
-        data.value = rawInit;
-        if (writeDefaults && rawInit !== null)
-          await storageInterface.setItem(key, await serializer.write(rawInit));
-      } else if (mergeDefaults) {
-        const value = (await serializer.read(rawValue)) as T;
-        if (typeof mergeDefaults === 'function')
-          data.value = mergeDefaults(value, rawInit);
-        else if (type === 'object' && !Array.isArray(value))
-          data.value = {
-            ...(rawInit as Record<keyof unknown, unknown>),
-            ...(value as Record<keyof unknown, unknown>),
-          } as T;
-        else data.value = value;
-      } else {
-        data.value = (await serializer.read(rawValue)) as T;
-      }
-    } catch (error) {
-      onError(error);
+  const pullFromStorage = async () => {
+    const rawItem = await storageInterface.getItem(key);
+    if (rawItem) {
+      const item = serializer.read(rawItem) as T;
+      data.value = item;
     }
-  }
+  };
 
-  void read();
-
-  async function write() {
-    try {
-      await (data.value == null
-        ? storageInterface.removeItem(key)
-        : storageInterface.setItem(key, await serializer.write(data.value)));
-    } catch (error) {
-      onError(error);
+  const pushToStorage = async () => {
+    const newVal = toRaw(unref(data));
+    if (newVal === null) {
+      await storageInterface.removeItem(key);
+    } else {
+      const item = await serializer.write(newVal);
+      await storageInterface.setItem(key, item);
     }
-  }
+  };
 
-  const { pause: pauseWatch, resume: resumeWatch } = pausableWatch(
-    data,
-    write,
-    {
-      flush,
-      deep,
-      eventFilter,
-    },
-  );
+  const { pause: pauseWatch, resume: resumeWatch } = pausableWatch(data, pushToStorage, {
+    flush,
+    deep,
+    eventFilter,
+  });
 
   if (listenToStorageChanges) {
     const listener = async (changes: Record<string, Storage.StorageChange>) => {
+      if (!(key in changes)) {
+        return;
+      }
       try {
         pauseWatch();
-        for (const [key, change] of Object.entries(changes)) {
-          await read({
-            key,
-            newValue: change.newValue as string | null,
-          });
-        }
+        await pullFromStorage();
       } finally {
         resumeWatch();
       }
@@ -151,5 +134,7 @@ export function useWebExtensionStorage<T>(
     });
   }
 
-  return data as RemovableRef<T>;
+  pullFromStorage(); // Init
+
+  return data;
 }

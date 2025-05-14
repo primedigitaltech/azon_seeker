@@ -1,4 +1,5 @@
 import type Emittery from 'emittery';
+import { TaskQueue } from '../task-queue';
 
 type AmazonSearchItem = {
   keywords: string;
@@ -16,7 +17,7 @@ type AmazonDetailItem = {
   ratingCount?: number;
   category1?: { name: string; rank: number };
   category2?: { name: string; rank: number };
-  imageUrls: string[];
+  imageUrls?: string[];
 };
 
 type AmazonItem = AmazonSearchItem & Partial<AmazonDetailItem> & { hasDetail: boolean };
@@ -71,7 +72,7 @@ interface AmazonPageWorker {
    * Browsing goods detail page and collect target information.
    * @param entry Product link or Amazon Standard Identification Number.
    */
-  wanderDetailPage(entry: string): Promise<void>;
+  wanderDetailPage(entry: string | string[]): Promise<void>;
 
   /**
    * Stop the worker.

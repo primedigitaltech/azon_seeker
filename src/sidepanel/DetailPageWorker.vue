@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FormItemRule, UploadOnChange } from 'naive-ui';
 import pageWorkerFactory from '~/logic/page-worker';
+import { AmazonDetailItem } from '~/logic/page-worker/types';
 import { asinInputText, detailItems } from '~/logic/storage';
 
 const message = useMessage();
@@ -44,7 +45,7 @@ worker.channel.on('item-rating-collected', (ev) => {
     time: new Date().toLocaleString(),
     content: `评分： ${ev.rating}；评价数：${ev.ratingCount}`,
   });
-  detailItems.value[ev.asin] = { ...detailItems.value[ev.asin], ...ev };
+  createOrUpdateDetailItem(ev);
 });
 worker.channel.on('item-category-rank-collected', (ev) => {
   timelines.value.push({
@@ -56,16 +57,16 @@ worker.channel.on('item-category-rank-collected', (ev) => {
       ev.category2 ? `#${ev.category2.rank} in ${ev.category2.name}` : '',
     ].join('\n'),
   });
-  detailItems.value[ev.asin] = { ...detailItems.value[ev.asin], ...ev };
+  createOrUpdateDetailItem(ev);
 });
 worker.channel.on('item-images-collected', (ev) => {
   timelines.value.push({
     type: 'success',
     title: `商品${ev.asin}图像`,
     time: new Date().toLocaleString(),
-    content: `图片数： ${ev.imageUrls.length}`,
+    content: `图片数： ${ev.imageUrls!.length}`,
   });
-  detailItems.value[ev.asin] = { ...detailItems.value[ev.asin], ...ev };
+  createOrUpdateDetailItem(ev);
 });
 
 const handleImportAsin: UploadOnChange = ({ fileList }) => {
@@ -132,6 +133,17 @@ const handleFetchInfoFromPage = () => {
       }
     },
   });
+};
+
+const createOrUpdateDetailItem = (info: AmazonDetailItem) => {
+  const targetIndex = detailItems.value.findLastIndex((item) => info.asin === item.asin);
+  if (targetIndex > -1) {
+    const origin = detailItems.value[targetIndex];
+    const updatedItem = { ...origin, ...info };
+    detailItems.value.splice(targetIndex, 1, updatedItem);
+  } else {
+    detailItems.value.push(info);
+  }
 };
 </script>
 

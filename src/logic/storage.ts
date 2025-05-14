@@ -5,58 +5,54 @@ export const keywordsList = useWebExtensionStorage<string[]>('keywordsList', [''
 
 export const asinInputText = useWebExtensionStorage<string>('asinInputText', '');
 
-export const searchItems = useWebExtensionStorage<AmazonSearchItem[]>('itemList', []);
+export const searchItems = useWebExtensionStorage<AmazonSearchItem[]>('searchItems', []);
 
-export const detailItems = useWebExtensionStorage<{ [asin: string]: AmazonDetailItem }>(
-  'detailItems',
-  {},
-);
+export const detailItems = useWebExtensionStorage<AmazonDetailItem[]>('detailItems', []);
 
 export const allItems = computed({
   get() {
     const sItems = searchItems.value;
-    const dItems = detailItems.value;
+    const dItems = detailItems.value.reduce<Map<string, AmazonDetailItem>>(
+      (m, c) => (m.set(c.asin, c), m),
+      new Map(),
+    );
     return sItems.map<AmazonItem>((si) => {
       const asin = si.asin;
-      return asin in dItems
-        ? { ...si, ...dItems[asin], hasDetail: true }
-        : { ...si, hasDetail: false };
+      const dItem = dItems.get(asin);
+      return dItem ? { ...si, ...dItem, hasDetail: true } : { ...si, hasDetail: false };
     });
   },
   set(newValue) {
+    const searchItemProps: (keyof AmazonSearchItem)[] = [
+      'keywords',
+      'asin',
+      'title',
+      'imageSrc',
+      'link',
+      'rank',
+      'createTime',
+    ];
     searchItems.value = newValue.map((row) => {
-      const props: (keyof AmazonSearchItem)[] = [
-        'keywords',
-        'asin',
-        'title',
-        'imageSrc',
-        'link',
-        'rank',
-        'createTime',
-      ];
       const entries: [string, unknown][] = Object.entries(row).filter(([key]) =>
-        props.includes(key as keyof AmazonSearchItem),
+        searchItemProps.includes(key as keyof AmazonSearchItem),
       );
       return Object.fromEntries(entries) as AmazonSearchItem;
     });
+    const detailItemsProps: (keyof AmazonDetailItem)[] = [
+      'asin',
+      'category1',
+      'category2',
+      'imageUrls',
+      'rating',
+      'ratingCount',
+    ];
     detailItems.value = newValue
       .filter((row) => row.hasDetail)
-      .reduce<Record<string, AmazonDetailItem>>((o, row) => {
-        const { asin } = row;
-        const props: (keyof AmazonDetailItem)[] = [
-          'asin',
-          'category1',
-          'category2',
-          'imageUrls',
-          'rating',
-          'ratingCount',
-        ];
+      .map((row) => {
         const entries: [string, unknown][] = Object.entries(row).filter(([key]) =>
-          props.includes(key as keyof AmazonDetailItem),
+          detailItemsProps.includes(key as keyof AmazonDetailItem),
         );
-        const item = Object.fromEntries(entries) as AmazonDetailItem;
-        o[asin] = item;
-        return o;
-      }, {});
+        return Object.fromEntries(entries) as AmazonSearchItem;
+      });
   },
 });

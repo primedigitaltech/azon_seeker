@@ -2,34 +2,14 @@ import Emittery from 'emittery';
 import type { AmazonDetailItem, AmazonPageWorker, AmazonPageWorkerEvents } from './types';
 import type { Tabs } from 'webextension-polyfill';
 import { exec } from '../execute-script';
-
-/**
- * Process unknown errors.
- */
-function withErrorHandling(
-  target: (this: AmazonPageWorker, ...args: any[]) => Promise<any>,
-  _context: ClassMethodDecoratorContext,
-): (this: AmazonPageWorker, ...args: any[]) => Promise<any> {
-  // target 就是当前被装饰的 class 方法
-  const originalMethod = target;
-  // 定义一个新方法
-  const decoratedMethod = async function (this: AmazonPageWorker, ...args: any[]) {
-    try {
-      return await originalMethod.call(this, ...args); // 调用原有方法
-    } catch (error) {
-      this.channel.emit('error', { message: `发生未知错误：${error}` });
-      throw error;
-    }
-  };
-  // 返回装饰后的方法
-  return decoratedMethod;
-}
+import { TaskController, TaskQueue, taskUnit } from '../task-queue';
+import { withErrorHandling } from '../error-handler';
 
 /**
  * AmazonPageWorkerImpl can run on background & sidepanel & popup,
  *  **can't** run on content script!
  */
-class AmazonPageWorkerImpl implements AmazonPageWorker {
+class AmazonPageWorkerImpl implements AmazonPageWorker, TaskController {
   //#region Singleton
   private static _instance: AmazonPageWorker | null = null;
   public static getInstance() {
@@ -47,9 +27,9 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
   readonly channel = new Emittery<AmazonPageWorkerEvents>();
 
   /**
-   * The signal to interrupt the current operation.
+   * The Task queue
    */
-  private _isCancel = false;
+  readonly taskQueue = new TaskQueue();
 
   private async getCurrentTab(): Promise<Tabs.Tab> {
     const tab = await browser.tabs
@@ -173,6 +153,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
   }
 
   @withErrorHandling
+  @taskUnit
   public async doSearch(keywords: string): Promise<string> {
     const url = new URL('https://www.amazon.com/s');
     url.searchParams.append('k', keywords);
@@ -189,14 +170,11 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
   }
 
   @withErrorHandling
+  @taskUnit
   public async wanderSearchPage(): Promise<void> {
     const tab = await this.getCurrentTab();
-    this._isCancel = false;
-    const stop = this.channel.on('error', async (_: unknown): Promise<void> => {
-      this._isCancel = true;
-    });
     let offset = 0;
-    while (!this._isCancel) {
+    while (true) {
       const { hasNextPage, data } = await this.wanderSearchSinglePage(tab);
       const keywords = new URL(tab.url!).searchParams.get('k')!;
       const objs = data.map((r, i) => ({
@@ -212,12 +190,12 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
         break;
       }
     }
-    this._isCancel = false;
     this.channel.off('error', stop);
     return new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
   @withErrorHandling
+  @taskUnit
   public async wanderDetailPage(entry: string): Promise<void> {
     //#region Initial Meta Info
     const params = { asin: '', url: '' };
@@ -244,7 +222,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
         window.scrollBy(0, ~~(Math.random() * 500) + 500);
         await new Promise((resolve) => setTimeout(resolve, ~~(Math.random() * 50) + 50));
         const targetNode = document.querySelector(
-          '#prodDetails:has(td), #detailBulletsWrapper_feature_div:has(li)',
+          '#prodDetails:has(td), #detailBulletsWrapper_feature_div:has(li), .av-page-desktop',
         );
         if (targetNode && document.readyState !== 'loading') {
           targetNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -303,19 +281,19 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     });
     if (rawRankingText) {
       const info: Pick<AmazonDetailItem, 'category1' | 'category2'> = {};
-      let statement = /#[0-9,]+\sin\s\S[\s\w&\(\)]+/.exec(rawRankingText)?.[0];
+      let statement = /#[0-9,]+\sin\s\S[\s\w',\.&\(\)]+/.exec(rawRankingText)?.[0];
       if (statement) {
         const name = /(?<=in\s).+(?=\s\(See)/.exec(statement)?.[0] || null;
-        const rank = Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replace(',', '')) || null;
+        const rank = Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replaceAll(',', '')) || null;
         if (name && rank) {
           info['category1'] = { name, rank };
         }
         rawRankingText = rawRankingText.replace(statement, '');
       }
-      statement = /#[0-9,]+\sin\s\S[\s\w&\(\)]+/.exec(rawRankingText)?.[0];
+      statement = /#[0-9,]+\sin\s\S[\s\w',\.&\(\)]+/.exec(rawRankingText)?.[0];
       if (statement) {
         const name = /(?<=in\s).+/.exec(statement)?.[0].replace(/[\s]+$/, '') || null;
-        const rank = Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replace(',', '')) || null;
+        const rank = Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replaceAll(',', '')) || null;
         if (name && rank) {
           info['category2'] = { name, rank };
         }
@@ -376,7 +354,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
   }
 
   public async stop(): Promise<void> {
-    this._isCancel = true;
+    this.taskQueue.clear();
   }
 }
 
