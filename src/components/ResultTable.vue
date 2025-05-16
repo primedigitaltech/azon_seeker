@@ -58,6 +58,11 @@ const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
     minWidth: 120,
   },
   {
+    title: '页码',
+    key: 'page',
+    minWidth: 60,
+  },
+  {
     title: '排位',
     key: 'rank',
     minWidth: 60,

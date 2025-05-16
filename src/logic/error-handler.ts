@@ -22,6 +22,7 @@ export function withErrorHandling(
       throw error;
     }
   };
+  Object.defineProperty(decoratedMethod, 'name', { value: originalMethod.name });
   // 返回装饰后的方法
   return decoratedMethod;
 }

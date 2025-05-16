@@ -111,11 +111,9 @@ const handleFetchInfoFromPage = () => {
         content: '开始数据采集',
       },
     ];
-    while (asinList.length > 0) {
-      const asin = asinList.shift()!;
-      await worker.wanderDetailPage(asin);
-      asinInputText.value = asinList.join('\n'); // Update Input Text
-    }
+    await worker.runDetaiPageTask(asinList, async (remains) => {
+      asinInputText.value = remains.join('\n');
+    });
     timelines.value.push({
       type: 'info',
       title: '结束',
@@ -133,6 +131,12 @@ const handleFetchInfoFromPage = () => {
       }
     },
   });
+};
+
+const handleInterrupt = () => {
+  if (!running.value) return;
+  worker.stop();
+  message.info('已触发中断，正在等待当前任务完成。', { duration: 2000 });
 };
 
 const createOrUpdateDetailItem = (info: AmazonDetailItem) => {
@@ -154,17 +158,17 @@ const createOrUpdateDetailItem = (info: AmazonDetailItem) => {
       <mdi-cat style="color: black; font-size: 60px" />
       <h1 style="font-size: 30px; color: black">Detail Page</h1>
     </div>
-    <div v-if="!running" class="interative-section">
+    <div class="interative-section">
       <n-space>
         <n-upload @change="handleImportAsin" accept=".txt" :max="1">
-          <n-button round size="small">
+          <n-button :disabled="running" round size="small">
             <template #icon>
               <gg-import />
             </template>
             导入
           </n-button>
         </n-upload>
-        <n-button @click="handleExportAsin" round size="small">
+        <n-button :disabled="running" @click="handleExportAsin" round size="small">
           <template #icon>
             <ion-arrow-up-right-box-outline />
           </template>
@@ -178,20 +182,27 @@ const createOrUpdateDetailItem = (info: AmazonDetailItem) => {
         style="padding-top: 0px"
       >
         <n-input
+          :disabled="running"
           v-model:value="asinInputText"
           placeholder="输入ASINs"
           type="textarea"
           size="large"
         />
       </n-form-item>
-      <n-button round size="large" type="primary" @click="handleFetchInfoFromPage">
+      <n-button v-if="!running" round size="large" type="primary" @click="handleFetchInfoFromPage">
         <template #icon>
           <ant-design-thunderbolt-outlined />
         </template>
         开始
       </n-button>
+      <n-button v-else round size="large" type="primary" @click="handleInterrupt">
+        <template #icon>
+          <ant-design-thunderbolt-outlined />
+        </template>
+        停止
+      </n-button>
     </div>
-    <div v-else class="running-tip-section">
+    <div v-if="running" class="running-tip-section">
       <n-alert title="Warning" type="warning"> 警告，在插件运行期间请勿与浏览器交互。 </n-alert>
     </div>
     <progress-report class="progress-report" :timelines="timelines" />
@@ -230,14 +241,14 @@ const createOrUpdateDetailItem = (info: AmazonDetailItem) => {
   }
 
   .running-tip-section {
-    margin: 0 0 10px 0;
+    margin: 10px 0 0 0;
     height: 100px;
     border-radius: 10px;
     cursor: wait;
   }
 
   .progress-report {
-    margin-top: 20px;
+    margin-top: 10px;
     width: 95%;
   }
 }

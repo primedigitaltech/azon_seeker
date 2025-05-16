@@ -21,26 +21,31 @@
  * console.log(result); // Outputs: 42
  * ```
  */
-export async function exec<T>(tabId: number, func: () => Promise<T>): Promise<T | null>;
+export async function exec<T>(tabId: number, func: () => Promise<T>): Promise<T>;
 export async function exec<T, P extends Record<string, unknown>>(
   tabId: number,
   func: (payload: P) => Promise<T>,
   payload: P,
-): Promise<T | null>;
+): Promise<T>;
 export async function exec<T, P extends Record<string, unknown>>(
   tabId: number,
   func: (payload?: P) => Promise<T>,
   payload?: P,
-): Promise<T | null> {
-  const injectResults = await browser.scripting.executeScript({
-    target: { tabId },
-    func,
-    args: payload ? [payload] : undefined,
+): Promise<T> {
+  const { timeout } = {
+    timeout: 30000,
+  };
+  return new Promise<T>(async (resolve, reject) => {
+    setTimeout(() => reject('脚本运行超时'), timeout);
+    const injectResults = await browser.scripting.executeScript({
+      target: { tabId },
+      func,
+      args: payload ? [payload] : undefined,
+    });
+    const ret = injectResults.pop();
+    if (ret?.error) {
+      reject(`注入脚本时发生错误: ${ret.error}`);
+    }
+    resolve(ret!.result as T);
   });
-  const ret = injectResults.pop();
-  if (ret?.error) {
-    console.error('注入脚本时发生错误', ret.error);
-    throw new Error('注入脚本时发生错误');
-  }
-  return ret?.result as T | null;
 }

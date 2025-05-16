@@ -3,6 +3,7 @@ import { TaskQueue } from '../task-queue';
 
 type AmazonSearchItem = {
   keywords: string;
+  page: number;
   link: string;
   title: string;
   asin: string;
@@ -57,22 +58,21 @@ interface AmazonPageWorker {
   readonly channel: Emittery<AmazonPageWorkerEvents>;
 
   /**
-   * Search for a list of goods on Amazon
-   * @param keywords - The keywords to search for on Amazon.
-   * @returns A promise that resolves to a string representing the search URL.
-   */
-  doSearch(keywords: string): Promise<string>;
-
-  /**
    * Browsing goods search page and collect links to those goods.
+   * @param keywordsList - The keywords list to search for on Amazon.
+   * @param progress The callback that receive remaining keywords as the parameter.
    */
-  wanderSearchPage(): Promise<void>;
+  runSearchPageTask(
+    keywordsList: string[],
+    progress?: (remains: string[]) => Promise<void>,
+  ): Promise<void>;
 
   /**
    * Browsing goods detail page and collect target information.
-   * @param entry Product link or Amazon Standard Identification Number.
+   * @param asins Amazon Standard Identification Numbers.
+   * @param progress The callback that receive remaining asins as the parameter.
    */
-  wanderDetailPage(entry: string | string[]): Promise<void>;
+  runDetaiPageTask(asins: string[], progress?: (remains: string[]) => Promise<void>): Promise<void>;
 
   /**
    * Stop the worker.

@@ -40,27 +40,44 @@ const timelines = ref<
 >([]);
 
 const handleFetchInfoFromPage = async () => {
+  if (keywordsList.value.length === 0) {
+    return;
+  }
+  const kws = unref(keywordsList);
   running.value = true;
-  timelines.value = [];
-  for (const keywords of keywordsList.value.filter((k) => k.trim() !== '')) {
-    timelines.value.push({
+  timelines.value = [
+    {
       type: 'info',
       title: '开始',
       time: new Date().toLocaleString(),
-      content: `开始关键词：${keywords} 数据采集`,
-    });
-    //#region start page worker
-    await worker.doSearch(keywords);
-    await worker.wanderSearchPage();
-    //#endregion
-    timelines.value.push({
-      type: 'info',
-      title: '结束',
-      time: new Date().toLocaleString(),
-      content: `关键词: ${keywords} 数据采集完成`,
-    });
-  }
+      content: `关键词: ${kws[0]} 数据采集开始`,
+    },
+  ];
+  timelines.value.push();
+  await worker.runSearchPageTask(kws, async (remains) => {
+    if (remains.length > 0) {
+      timelines.value.push({
+        type: 'info',
+        title: '开始',
+        time: new Date().toLocaleString(),
+        content: `关键词: ${remains[0]} 数据采集开始`,
+      });
+      keywordsList.value = remains;
+    }
+  });
+  timelines.value.push({
+    type: 'info',
+    title: '结束',
+    time: new Date().toLocaleString(),
+    content: `搜索任务结束`,
+  });
   running.value = false;
+};
+
+const handleInterrupt = () => {
+  if (!running.value) return;
+  worker.stop();
+  message.info('已触发中断，正在等待当前任务完成。', { duration: 2000 });
 };
 </script>
 
@@ -71,8 +88,9 @@ const handleFetchInfoFromPage = async () => {
       <mdi-cat style="font-size: 60px; color: black" />
       <h1>Search Page</h1>
     </n-space>
-    <div v-if="!running" class="interactive-section">
+    <div class="interactive-section">
       <n-dynamic-input
+        :disabled="running"
         v-model:value="keywordsList"
         :min="1"
         :max="10"
@@ -82,7 +100,7 @@ const handleFetchInfoFromPage = async () => {
         round
         placeholder="请输入关键词采集信息"
       />
-      <n-button type="primary" round size="large" @click="handleFetchInfoFromPage()">
+      <n-button v-if="!running" type="primary" round size="large" @click="handleFetchInfoFromPage">
         <template #icon>
           <n-icon>
             <ant-design-thunderbolt-outlined />
@@ -90,11 +108,18 @@ const handleFetchInfoFromPage = async () => {
         </template>
         开始
       </n-button>
+      <n-button v-else type="primary" round size="large" @click="handleInterrupt">
+        <template #icon>
+          <n-icon>
+            <ant-design-thunderbolt-outlined />
+          </n-icon>
+        </template>
+        中断
+      </n-button>
     </div>
-    <div v-else class="running-tip-section">
+    <div v-if="running" class="running-tip-section">
       <n-alert title="Warning" type="warning"> 警告，在插件运行期间请勿与浏览器交互。 </n-alert>
     </div>
-    <div style="height: 10px"></div>
     <progress-report class="progress-report" :timelines="timelines" />
   </main>
 </template>

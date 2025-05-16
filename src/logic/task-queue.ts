@@ -12,22 +12,16 @@ export type TaskExecutionResult<T = undefined> =
       message: string;
     };
 
-export interface TaskInit<
-  T = undefined,
-  F extends (...args: unknown[]) => Promise<T> = (...args: unknown[]) => Promise<T>,
-> {
-  func: F;
-  args?: Parameters<F>;
+export interface TaskInit<T = undefined, P extends any[] = unknown[]> {
+  func: (...args: P) => Promise<T>;
+  args?: P;
   callback?: (result: TaskExecutionResult<T>) => Promise<void> | void;
 }
 
-export class Task<
-  T = undefined,
-  F extends (...args: unknown[]) => Promise<T> = (...args: unknown[]) => Promise<T>,
-> {
+export class Task<T = undefined, P extends any[] = any[]> {
   private _name: string;
-  private _func: F;
-  private _args: Parameters<F>;
+  private _func: (...args: P) => Promise<T>;
+  private _args: P;
   private _status: 'initialization' | 'running' | 'success' | 'failure' = 'initialization';
   private _result: TaskExecutionResult<T> | null = null;
   private _callback: ((result: TaskExecutionResult<T>) => Promise<void> | void) | undefined;
@@ -44,10 +38,10 @@ export class Task<
     return this._result;
   }
 
-  constructor(name: string, init: TaskInit<T, F>) {
+  constructor(name: string, init: TaskInit<T, P>) {
     this._name = name;
     this._func = init.func;
-    this._args = init.args ?? ([] as unknown as Parameters<F>);
+    this._args = init.args ?? ([] as unknown as P);
     this._callback = init.callback;
   }
 
@@ -81,7 +75,7 @@ export class Task<
 }
 
 export class TaskQueue {
-  private _queue: Task<any>[] = [];
+  private _queue: Task<any, any[]>[] = [];
   private _running = false;
   private _channel: Emittery<{ interrupt: undefined; start: undefined; stop: undefined }> =
     new Emittery();
@@ -99,7 +93,11 @@ export class TaskQueue {
     return this._running;
   }
 
-  public add<T>(task: Task<T>) {
+  public get channel() {
+    return this._channel;
+  }
+
+  public add(task: Task<any, any>) {
     this._queue.push(task);
   }
 
@@ -140,42 +138,4 @@ export interface TaskController {
    * The queue that manages the tasks for this controller.
    */
   readonly taskQueue: TaskQueue;
-}
-
-/**
- * A decorator function that wraps a method to manage its execution as a task in a task queue.
- *
- * This function takes a method and returns a new method that, when called, will create a
- * `Task` and add it to the `taskQueue` of the `TaskController`. The original method will be
- * executed asynchronously, and the result will be resolved or rejected based on the task's
- * outcome.
- */
-export function taskUnit<T>(
-  target: (this: TaskController, ...args: any[]) => Promise<T>,
-  context: ClassMethodDecoratorContext,
-): (this: TaskController, ...args: any[]) => Promise<T> {
-  // target 就是当前被装饰的 class 方法
-  const originalMethod = target;
-  // 定义一个新方法
-  const decoratedMethod = async function (this: TaskController, ...args: any[]) {
-    return new Promise<T>((resolve, reject) => {
-      const task = new Task<T, typeof originalMethod>(context.name.toString(), {
-        func: (o, ...a) => originalMethod.call(o, ...a),
-        args: [this, ...args],
-        callback: (r) => {
-          if (r.status === 'success') {
-            resolve(r.result);
-          } else if (r.status === 'failure') {
-            reject(r.message);
-          }
-        },
-      });
-      this.taskQueue.add(task);
-      if (!this.taskQueue.running) {
-        this.taskQueue.start();
-      }
-    });
-  };
-  // 返回装饰后的方法
-  return decoratedMethod;
 }

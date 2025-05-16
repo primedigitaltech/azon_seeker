@@ -95,7 +95,9 @@ export default defineConfig(({ command }) => ({
     rollupOptions: {
       input: {
         sidepanel: r('src/sidepanel/index.html'),
+        options: r('src/options/index.html'),
       },
+      output: {},
     },
   },
   test: {

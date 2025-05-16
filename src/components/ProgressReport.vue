@@ -13,7 +13,7 @@ defineProps<{
   <n-card class="progress-report" title="数据获取情况">
     <n-timeline v-if="timelines.length > 0">
       <n-timeline-item
-        v-for="(item, index) in timelines"
+        v-for="(item, index) in timelines.toReversed()"
         :key="index"
         :type="item.type"
         :title="item.title"
