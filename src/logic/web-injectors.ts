@@ -95,6 +95,7 @@ export class AmazonSearchPageInjector {
       default:
         break;
     }
+    data = data && data.filter((r) => new URL(r.link).pathname.includes('/dp/'));
     return data;
   }
 
@@ -241,7 +242,7 @@ export class AmazonDetailPageInjector {
     });
   }
 
-  public async getReviews() {
+  public async getTopReviews() {
     return exec<Omit<AmazonReview, 'asin'>[]>(this._tab.id!, async () => {
       const targetNode = document.querySelector<HTMLDivElement>('.cr-widget-FocalReviews');
       if (!targetNode) {
@@ -252,7 +253,7 @@ export class AmazonDetailPageInjector {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
       const xResult = document.evaluate(
-        `//div[contains(@id, 'review-card')]`,
+        `.//div[contains(@id, 'review-card')]`,
         targetNode,
         null,
         XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
@@ -265,7 +266,7 @@ export class AmazonDetailPageInjector {
         }
         const username = commentNode.querySelector<HTMLDivElement>('.a-profile-name')!.innerText;
         const title = commentNode.querySelector<HTMLDivElement>(
-          'a[data-hook="review-title"] > span:not(.a-letter-space)',
+          '[data-hook="review-title"] > span:not(.a-letter-space)',
         )!.innerText;
         const rating = commentNode.querySelector<HTMLDivElement>(
           '[data-hook="review-star-rating"]',
