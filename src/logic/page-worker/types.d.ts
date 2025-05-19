@@ -19,6 +19,16 @@ type AmazonDetailItem = {
   category1?: { name: string; rank: number };
   category2?: { name: string; rank: number };
   imageUrls?: string[];
+  topReviews?: AmazonReview[];
+};
+
+type AmazonReview = {
+  asin: string;
+  username: string;
+  title: string;
+  rating: string;
+  dateInfo: string;
+  content: string;
 };
 
 type AmazonItem = AmazonSearchItem & Partial<AmazonDetailItem> & { hasDetail: boolean };
@@ -43,6 +53,11 @@ interface AmazonPageWorkerEvents {
    * The event is fired when images collected
    */
   ['item-images-collected']: Pick<AmazonDetailItem, 'asin' | 'imageUrls'>;
+
+  /**
+   * The event is fired when top reviews collected
+   */
+  ['item-top-reviews-collected']: { reviews: AmazonReview[] };
 
   /**
    * Error event that occurs when there is an issue with the Amazon page worker.

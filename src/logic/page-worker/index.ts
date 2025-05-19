@@ -1,8 +1,8 @@
 import Emittery from 'emittery';
 import type { AmazonDetailItem, AmazonPageWorker, AmazonPageWorkerEvents } from './types';
 import type { Tabs } from 'webextension-polyfill';
-import { exec } from '../execute-script';
 import { withErrorHandling } from '../error-handler';
+import { AmazonDetailPageInjector, AmazonSearchPageInjector } from '../web-injectors';
 
 /**
  * AmazonPageWorkerImpl can run on background & sidepanel & popup,
@@ -40,119 +40,21 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
   }
 
   private async wanderSearchSinglePage(tab: Tabs.Tab) {
-    const tabId = tab.id!;
+    const injector = new AmazonSearchPageInjector(tab);
     // #region Wait for the Next button to appear, indicating that the product items have finished loading
-    await exec(tabId, async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500 + ~~(500 * Math.random())));
-      while (true) {
-        const targetNode = document.querySelector('.s-pagination-next');
-        window.scrollBy(0, ~~(Math.random() * 500) + 500);
-        await new Promise((resolve) => setTimeout(resolve, ~~(Math.random() * 50) + 500));
-        if (targetNode || document.readyState === 'complete') {
-          targetNode?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          break;
-        }
-      }
-      while (true) {
-        await new Promise((resolve) => setTimeout(resolve, 500 + ~~(500 * Math.random())));
-        const spins = Array.from(document.querySelectorAll<HTMLDivElement>('.a-spinner')).filter(
-          (e) => e.getClientRects().length > 0,
-        );
-        if (spins.length === 0) {
-          break;
-        }
-      }
-    });
+    await injector.waitForPageLoaded();
     // #endregion
     // #region Determine the type of product search page https://github.com/primedigitaltech/azon_seeker/issues/1
-    const pagePattern = await exec(tabId, async () => {
-      return [
-        ...(document.querySelectorAll<HTMLDivElement>(
-          '.puisg-row:has(.a-section.a-spacing-small.a-spacing-top-small:not(.a-text-right))',
-        ) as unknown as HTMLDivElement[]),
-      ].filter((e) => e.getClientRects().length > 0).length > 0
-        ? 'pattern-1'
-        : 'pattern-2';
-    });
-    if (typeof pagePattern !== 'string') {
-      this.channel.emit('error', { message: '无法判断商品搜索页类型', url: tab.url });
-      throw new Error('无法判断商品搜索页类型');
-    }
+    const pagePattern = await injector.getPagePattern();
     // #endregion
     // #region Retrieve key nodes and their information from the critical product search page
-    let data: { link: string; title: string; imageSrc: string }[] | null = null;
-    switch (pagePattern) {
-      // 处理商品以列表形式展示的情况
-      case 'pattern-1':
-        data = await exec(tabId, async () => {
-          const items = Array.from(
-            document.querySelectorAll<HTMLDivElement>(
-              '.puisg-row:has(.a-section.a-spacing-small.a-spacing-top-small:not(.a-text-right))',
-            ),
-          ).filter((e) => e.getClientRects().length > 0);
-          const linkObjs = items.reduce<{ link: string; title: string; imageSrc: string }[]>(
-            (objs, el) => {
-              const link = el.querySelector<HTMLAnchorElement>('a')?.href;
-              const title = el
-                .querySelector<HTMLHeadingElement>('h2.a-color-base')!
-                .getAttribute('aria-label')!;
-              const imageSrc = el.querySelector<HTMLImageElement>('img.s-image')!.src!;
-              link && objs.push({ link, title, imageSrc });
-              return objs;
-            },
-            [],
-          );
-          return linkObjs;
-        });
-        break;
-      // 处理商品以二维图片格展示的情况
-      case 'pattern-2':
-        data = await exec(tabId, async () => {
-          const items = Array.from(
-            document.querySelectorAll<HTMLDivElement>(
-              '.puis-card-container:has(.a-section.a-spacing-small.puis-padding-left-small)',
-            ) as unknown as HTMLDivElement[],
-          ).filter((e) => e.getClientRects().length > 0);
-          const linkObjs = items.reduce<{ link: string; title: string; imageSrc: string }[]>(
-            (objs, el) => {
-              const link = el.querySelector<HTMLAnchorElement>('a.a-link-normal')?.href;
-              const title = el.querySelector<HTMLHeadingElement>('h2.a-color-base')!.innerText;
-              const imageSrc = el.querySelector<HTMLImageElement>('img.s-image')!.src!;
-              link && objs.push({ link, title, imageSrc });
-              return objs;
-            },
-            [],
-          );
-          return linkObjs;
-        });
-        break;
-      default:
-        break;
-    }
+    const data = await injector.getPageData(pagePattern);
     // #endregion
     // #region get current page
-    const page = (await exec<number>(tab.id!, async () => {
-      const node = document.querySelector<HTMLDivElement>(
-        '.s-pagination-item.s-pagination-selected',
-      );
-      return node ? Number(node.innerText) : 1;
-    }))!;
+    const page = await injector.getCurrentPage();
     // #endregion
     // #region Determine if it is the last page, otherwise navigate to the next page
-    const hasNextPage = await exec(tabId, async () => {
-      const nextButton = document.querySelector<HTMLLinkElement>('.s-pagination-next');
-      if (nextButton) {
-        if (!nextButton.classList.contains('s-pagination-disabled')) {
-          await new Promise((resolve) => setTimeout(resolve, 500 + ~~(500 * Math.random())));
-          nextButton.click();
-          return true;
-        } else {
-          return false;
-        }
-      } else {
-        return false;
-      }
-    });
+    const hasNextPage = await injector.determineHasNextPage();
     // #endregion
     await new Promise((resolve) => setTimeout(resolve, 1000));
     if (data === null || typeof hasNextPage !== 'boolean') {
@@ -169,6 +71,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     let tab = await this.getCurrentTab();
     if (!tab.url?.startsWith('http')) {
       tab = await this.createNewTab('https://www.amazon.com/');
+      tab.url = 'https://www.amazon.com/';
     }
     const currentUrl = new URL(tab.url!);
     if (currentUrl.hostname !== url.hostname || currentUrl.searchParams.get('k') !== keywords) {
@@ -222,48 +125,14 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
         url: params.url,
       });
     }
+    const injector = new AmazonDetailPageInjector(tab);
     //#endregion
     //#region Await Production Introduction Element Loaded and Determine Page Pattern
-    await exec(tab.id!, async () => {
-      while (true) {
-        window.scrollBy(0, ~~(Math.random() * 500) + 500);
-        await new Promise((resolve) => setTimeout(resolve, ~~(Math.random() * 100) + 200));
-        const targetNode = document.querySelector(
-          '#prodDetails:has(td), #detailBulletsWrapper_feature_div:has(li), .av-page-desktop',
-        );
-        const exceptionalNodeSelectors = ['music-detail-header', '.avu-retail-page'];
-        for (const selector of exceptionalNodeSelectors) {
-          if (document.querySelector(selector)) {
-            return false;
-          }
-        }
-        if (targetNode && document.readyState !== 'loading') {
-          targetNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          break;
-        }
-      }
-      return true;
-    });
+    await injector.waitForPageLoaded();
     await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait 3 seconds.
     //#endregion
     //#region Fetch Rating Info
-    const ratingInfo = await exec(tab.id!, async () => {
-      const review = document.querySelector('#averageCustomerReviews');
-      const rating = Number(
-        review?.querySelector('#acrPopover')?.getAttribute('title')?.split(' ')[0],
-      );
-      const ratingCount = Number(
-        review
-          ?.querySelector('#acrCustomerReviewText')
-          ?.getAttribute('aria-label')
-          ?.split(' ')[0]
-          ?.replace(',', ''),
-      );
-      return {
-        rating: isNaN(rating) || rating == 0 ? 0 : rating,
-        ratingCount: isNaN(ratingCount) || ratingCount == 0 ? 0 : ratingCount,
-      };
-    });
+    const ratingInfo = await injector.getRatingInfo();
     if (ratingInfo && (ratingInfo.rating !== 0 || ratingInfo.ratingCount !== 0)) {
       this.channel.emit('item-rating-collected', {
         asin: params.asin,
@@ -272,27 +141,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     }
     //#endregion
     //#region Fetch Category Rank Info
-    let rawRankingText: string | null = await exec(tab.id!, async () => {
-      const xpathExps = [
-        `//div[@id='detailBulletsWrapper_feature_div']//ul[.//li[contains(., 'Best Sellers Rank')]]//span[@class='a-list-item']`,
-        `//div[@id='prodDetails']//table/tbody/tr[th[1][contains(text(), 'Best Sellers Rank')]]/td`,
-        `//div[@id='productDetails_db_sections']//table/tbody/tr[th[1][contains(text(), 'Best Sellers Rank')]]/td`,
-      ];
-      for (const xpathExp of xpathExps) {
-        const targetNode = document.evaluate(
-          xpathExp,
-          document,
-          null,
-          XPathResult.FIRST_ORDERED_NODE_TYPE,
-          null,
-        ).singleNodeValue as HTMLDivElement | null;
-        if (targetNode) {
-          targetNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          return targetNode.innerText;
-        }
-      }
-      return null;
-    });
+    let rawRankingText: string | null = await injector.getRankText();
     if (rawRankingText) {
       const info: Pick<AmazonDetailItem, 'category1' | 'category2'> = {};
       let statement = /#[0-9,]+\sin\s\S[\s\w',\.&\(\)]+/.exec(rawRankingText)?.[0];
@@ -319,51 +168,20 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     }
     //#endregion
     //#region Fetch Goods' Images
-    const imageUrls = await exec(tab.id!, async () => {
-      let urls = Array.from(document.querySelectorAll<HTMLImageElement>('.imageThumbnail img')).map(
-        (e) => e.src,
-      );
-      //#region process more images https://github.com/primedigitaltech/azon_seeker/issues/4
-      const overlay = document.querySelector<HTMLDivElement>('.overlayRestOfImages');
-      if (overlay) {
-        if (document.querySelector<HTMLDivElement>('#ivThumbs')!.getClientRects().length === 0) {
-          overlay.click();
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-        urls = [
-          ...(document.querySelectorAll(
-            '#ivThumbs .ivThumbImage[style]',
-          ) as unknown as HTMLDivElement[]),
-        ].map((e) => e.style.background);
-        urls = urls.map((s) => {
-          const [url] = /(?<=url\(").+(?=")/.exec(s)!;
-          return url;
-        });
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        document
-          .querySelector<HTMLButtonElement>(".a-popover button[data-action='a-popover-close']")
-          ?.click();
-      }
-      //#endregion
-      //#region post-process image urls
-      urls = urls.map((rawUrl) => {
-        const imgUrl = new URL(rawUrl);
-        const paths = imgUrl.pathname.split('/');
-        const chunks = paths[paths.length - 1].split('.');
-        const [name, ext] = [chunks[0], chunks[chunks.length - 1]];
-        paths[paths.length - 1] = `${name}.${ext}`;
-        imgUrl.pathname = paths.join('/');
-        return imgUrl.toString();
-      });
-      //#endregion
-      return urls;
-    });
+    const imageUrls = await injector.getImageUrls();
     imageUrls.length > 0 &&
       this.channel.emit('item-images-collected', {
         asin: params.asin,
         imageUrls: Array.from(new Set(imageUrls)),
       });
     await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds.
+    //#endregion
+    //#region Fetch Top Reviews
+    // const reviews = await injector.getReviews();
+    // reviews.length > 0 &&
+    //   this.channel.emit('item-top-reviews-collected', {
+    //     reviews: reviews.map((r) => ({ asin: params.asin, ...r })),
+    //   });
     //#endregion
   }
 

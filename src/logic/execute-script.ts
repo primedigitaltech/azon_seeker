@@ -44,7 +44,7 @@ export async function exec<T, P extends Record<string, unknown>>(
     });
     const ret = injectResults.pop();
     if (ret?.error) {
-      reject(`注入脚本时发生错误: ${ret.error}`);
+      reject(`注入脚本时发生错误: ${ret.error}`); // 似乎无法走到这一步
     }
     resolve(ret!.result as T);
   });
