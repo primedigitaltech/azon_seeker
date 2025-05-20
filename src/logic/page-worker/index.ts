@@ -177,11 +177,12 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds.
     //#endregion
     //#region Fetch Top Reviews
-    // const reviews = await injector.getReviews();
-    // reviews.length > 0 &&
-    //   this.channel.emit('item-top-reviews-collected', {
-    //     reviews: reviews.map((r) => ({ asin: params.asin, ...r })),
-    //   });
+    const reviews = await injector.getTopReviews();
+    reviews.length > 0 &&
+      this.channel.emit('item-top-reviews-collected', {
+        asin: params.asin,
+        topReviews: reviews.map((r) => ({ asin: params.asin, ...r })),
+      });
     //#endregion
   }
 

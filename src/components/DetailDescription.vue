@@ -6,7 +6,7 @@ const props = defineProps<{ model: AmazonDetailItem }>();
 
 <template>
   <div class="detail-description">
-    <n-descriptions label-placement="left" bordered :column="4">
+    <n-descriptions label-placement="left" bordered :column="4" label-style="min-width: 100px">
       <n-descriptions-item label="ASIN" :span="2">
         {{ props.model.asin }}
       </n-descriptions-item>
@@ -28,9 +28,17 @@ const props = defineProps<{ model: AmazonDetailItem }>();
       <n-descriptions-item label="排名">
         {{ props.model.category2?.rank || '-' }}
       </n-descriptions-item>
-      <n-descriptions-item label="图片链接">
+      <n-descriptions-item label="图片链接" :span="4">
         <div v-for="link in props.model.imageUrls">
           {{ link }}
+        </div>
+      </n-descriptions-item>
+      <n-descriptions-item label="评论" :span="2">
+        <div v-for="review in props.model.topReviews" style="margin-bottom: 5px">
+          <h5 style="margin: 0">{{ review.username }}:</h5>
+          <div v-for="paragraph in review.content.split('\n')">
+            {{ paragraph }}
+          </div>
         </div>
       </n-descriptions-item>
     </n-descriptions>

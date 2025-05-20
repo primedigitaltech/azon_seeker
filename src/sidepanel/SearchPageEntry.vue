@@ -82,12 +82,8 @@ const handleInterrupt = () => {
 </script>
 
 <template>
-  <main class="search-page-worker">
-    <header-menu />
-    <n-space class="app-title">
-      <mdi-cat style="font-size: 60px; color: black" />
-      <h1>Search Page</h1>
-    </n-space>
+  <div class="search-page-entry">
+    <header-title>Search Page</header-title>
     <div class="interactive-section">
       <n-dynamic-input
         :disabled="running"
@@ -121,21 +117,17 @@ const handleInterrupt = () => {
       <n-alert title="Warning" type="warning"> 警告，在插件运行期间请勿与浏览器交互。 </n-alert>
     </div>
     <progress-report class="progress-report" :timelines="timelines" />
-  </main>
+  </div>
 </template>
 
 <style lang="scss" scoped>
-.search-page-worker {
+.search-page-entry {
   width: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   gap: 20px;
-
-  .app-title {
-    margin-top: 20px;
-  }
 
   .interactive-section {
     border-radius: 10px;

@@ -57,7 +57,7 @@ interface AmazonPageWorkerEvents {
   /**
    * The event is fired when top reviews collected
    */
-  ['item-top-reviews-collected']: { reviews: AmazonReview[] };
+  ['item-top-reviews-collected']: Pick<AmazonDetailItem, 'asin' | 'topReviews'>;
 
   /**
    * Error event that occurs when there is an issue with the Amazon page worker.

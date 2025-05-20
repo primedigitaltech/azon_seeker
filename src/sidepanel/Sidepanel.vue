@@ -1,15 +1,20 @@
 <script setup lang="ts">
-import DetailPageWorker from './DetailPageWorker.vue';
-import SearchPageWorker from './SearchPageWorker.vue';
+import DetailPageEntry from './DetailPageEntry.vue';
+import SearchPageEntry from './SearchPageEntry.vue';
+import ReviewPageEntry from './ReviewPageEntry.vue';
 
 const tabs = [
   {
     name: '搜索页',
-    component: SearchPageWorker,
+    component: SearchPageEntry,
   },
   {
     name: '详情页',
-    component: DetailPageWorker,
+    component: DetailPageEntry,
+  },
+  {
+    name: '评论页',
+    component: ReviewPageEntry,
   },
 ];
 const selectedTab = ref(tabs[0].name);

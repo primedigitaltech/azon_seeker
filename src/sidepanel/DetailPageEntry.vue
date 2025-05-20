@@ -45,7 +45,7 @@ worker.channel.on('item-rating-collected', (ev) => {
     time: new Date().toLocaleString(),
     content: `评分： ${ev.rating}；评价数：${ev.ratingCount}`,
   });
-  createOrUpdateDetailItem(ev);
+  updateDetailItems(ev);
 });
 worker.channel.on('item-category-rank-collected', (ev) => {
   timelines.value.push({
@@ -57,7 +57,7 @@ worker.channel.on('item-category-rank-collected', (ev) => {
       ev.category2 ? `#${ev.category2.rank} in ${ev.category2.name}` : '',
     ].join('\n'),
   });
-  createOrUpdateDetailItem(ev);
+  updateDetailItems(ev);
 });
 worker.channel.on('item-images-collected', (ev) => {
   timelines.value.push({
@@ -66,7 +66,16 @@ worker.channel.on('item-images-collected', (ev) => {
     time: new Date().toLocaleString(),
     content: `图片数： ${ev.imageUrls!.length}`,
   });
-  createOrUpdateDetailItem(ev);
+  updateDetailItems(ev);
+});
+worker.channel.on('item-top-reviews-collected', (ev) => {
+  timelines.value.push({
+    type: 'success',
+    title: `商品${ev.asin}精选评论`,
+    time: new Date().toLocaleString(),
+    content: `精选评论数： ${ev.topReviews!.length}`,
+  });
+  updateDetailItems(ev);
 });
 
 const handleImportAsin: UploadOnChange = ({ fileList }) => {
@@ -139,7 +148,7 @@ const handleInterrupt = () => {
   message.info('已触发中断，正在等待当前任务完成。', { duration: 2000 });
 };
 
-const createOrUpdateDetailItem = (info: AmazonDetailItem) => {
+const updateDetailItems = (info: AmazonDetailItem) => {
   const targetIndex = detailItems.value.findLastIndex((item) => info.asin === item.asin);
   if (targetIndex > -1) {
     const origin = detailItems.value[targetIndex];
@@ -152,12 +161,8 @@ const createOrUpdateDetailItem = (info: AmazonDetailItem) => {
 </script>
 
 <template>
-  <div class="detail-page-worker">
-    <header-menu />
-    <div class="title">
-      <mdi-cat style="color: black; font-size: 60px" />
-      <h1 style="font-size: 30px; color: black">Detail Page</h1>
-    </div>
+  <div class="detail-page-entry">
+    <header-title>Detail Page</header-title>
     <div class="interative-section">
       <n-space>
         <n-upload @change="handleImportAsin" accept=".txt" :max="1">
@@ -210,23 +215,12 @@ const createOrUpdateDetailItem = (info: AmazonDetailItem) => {
 </template>
 
 <style scoped lang="scss">
-.detail-page-worker {
+.detail-page-entry {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-
-  .title {
-    margin: 20px 0 30px 0;
-    font-size: 60px;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    gap: 10px;
-  }
 
   .interative-section {
     display: flex;
