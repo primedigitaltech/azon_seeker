@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FormItemRule, UploadOnChange } from 'naive-ui';
-import pageWorkerFactory from '~/logic/page-worker';
+import pageWorker from '~/logic/page-worker';
 import { AmazonDetailItem } from '~/logic/page-worker/types';
 import { asinInputText, detailItems } from '~/logic/storage';
 
@@ -27,7 +27,8 @@ const timelines = ref<
 
 const running = ref(false);
 
-const worker = pageWorkerFactory.useAmazonPageWorker(); // 获取Page Worker单例
+//#region Page Worker 初始化Code
+const worker = pageWorker.useAmazonPageWorker(); // 获取Page Worker单例
 worker.channel.on('error', ({ message: msg }) => {
   timelines.value.push({
     type: 'error',
@@ -37,6 +38,15 @@ worker.channel.on('error', ({ message: msg }) => {
   });
   message.error(msg);
   running.value = false;
+});
+worker.channel.on('item-base-info-collected', (ev) => {
+  timelines.value.push({
+    type: 'success',
+    title: `商品${ev.asin}基本信息`,
+    time: new Date().toLocaleString(),
+    content: `标题： ${ev.title}；价格：${ev.price}`,
+  });
+  updateDetailItems(ev);
 });
 worker.channel.on('item-rating-collected', (ev) => {
   timelines.value.push({
@@ -77,6 +87,16 @@ worker.channel.on('item-top-reviews-collected', (ev) => {
   });
   updateDetailItems(ev);
 });
+const updateDetailItems = (row: { asin: string } & Partial<AmazonDetailItem>) => {
+  const asin = row.asin;
+  if (detailItems.value.has(row.asin)) {
+    const origin = detailItems.value.get(row.asin);
+    detailItems.value.set(asin, { ...origin, ...row } as AmazonDetailItem);
+  } else {
+    detailItems.value.set(asin, row as AmazonDetailItem);
+  }
+};
+//#endregion
 
 const handleImportAsin: UploadOnChange = ({ fileList }) => {
   if (fileList.length > 0) {
@@ -146,17 +166,6 @@ const handleInterrupt = () => {
   if (!running.value) return;
   worker.stop();
   message.info('已触发中断，正在等待当前任务完成。', { duration: 2000 });
-};
-
-const updateDetailItems = (info: AmazonDetailItem) => {
-  const targetIndex = detailItems.value.findLastIndex((item) => info.asin === item.asin);
-  if (targetIndex > -1) {
-    const origin = detailItems.value[targetIndex];
-    const updatedItem = { ...origin, ...info };
-    detailItems.value.splice(targetIndex, 1, updatedItem);
-  } else {
-    detailItems.value.push(info);
-  }
 };
 </script>
 

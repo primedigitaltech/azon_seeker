@@ -8,12 +8,15 @@ type AmazonSearchItem = {
   title: string;
   asin: string;
   rank: number;
+  price?: string;
   imageSrc: string;
   createTime: string;
 };
 
 type AmazonDetailItem = {
   asin: string;
+  title: string;
+  price?: string;
   rating?: number;
   ratingCount?: number;
   category1?: { name: string; rank: number };
@@ -23,7 +26,7 @@ type AmazonDetailItem = {
 };
 
 type AmazonReview = {
-  asin: string;
+  id: string;
   username: string;
   title: string;
   rating: string;
@@ -31,13 +34,20 @@ type AmazonReview = {
   content: string;
 };
 
-type AmazonItem = AmazonSearchItem & Partial<AmazonDetailItem> & { hasDetail: boolean };
+type AmazonItem = Pick<AmazonSearchItem, 'asin'> &
+  Partial<AmazonSearchItem> &
+  Partial<AmazonDetailItem> & { hasDetail: boolean };
 
 interface AmazonPageWorkerEvents {
   /**
    * The event is fired when worker collected links to items on the Amazon search page.
    */
   ['item-links-collected']: { objs: AmazonSearchItem[] };
+
+  /**
+   * The event is fired when worker collected goods' base info on the Amazon detail page.
+   */
+  ['item-base-info-collected']: Pick<AmazonDetailItem, 'asin' | 'title' | 'price'>;
 
   /**
    * The event is fired when worker collected goods' rating on the Amazon detail page.
@@ -55,12 +65,17 @@ interface AmazonPageWorkerEvents {
   ['item-images-collected']: Pick<AmazonDetailItem, 'asin' | 'imageUrls'>;
 
   /**
-   * The event is fired when top reviews collected
+   * The event is fired when top reviews collected in detail page
    */
   ['item-top-reviews-collected']: Pick<AmazonDetailItem, 'asin' | 'topReviews'>;
 
   /**
-   * Error event that occurs when there is an issue with the Amazon page worker.
+   * The event is fired when reviews collected in all review page
+   */
+  ['item-review-collected']: { asin: string; reviews: AmazonReview[] };
+
+  /**
+   * Error event that occurs when there is an issue with the Amazon page worker
    */
   ['error']: { message: string; url?: string };
 }
@@ -88,6 +103,16 @@ interface AmazonPageWorker {
    * @param progress The callback that receive remaining asins as the parameter.
    */
   runDetaiPageTask(asins: string[], progress?: (remains: string[]) => Promise<void>): Promise<void>;
+
+  /**
+   * Browsing goods review page and collect target information.
+   * @param asins Amazon Standard Identification Numbers.
+   * @param progress The callback that receive remaining asins as the parameter.
+   */
+  runReviewPageTask(
+    asins: string[],
+    progress?: (remains: string[]) => Promise<void>,
+  ): Promise<void>;
 
   /**
    * Stop the worker.

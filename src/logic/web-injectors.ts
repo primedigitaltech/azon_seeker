@@ -1,16 +1,22 @@
 import { exec } from './execute-script';
 import type { Tabs } from 'webextension-polyfill';
-import type { AmazonReview } from './page-worker/types';
+import type { AmazonReview, AmazonSearchItem } from './page-worker/types';
 
-export class AmazonSearchPageInjector {
+class BaseInjector {
   readonly _tab: Tabs.Tab;
 
   constructor(tab: Tabs.Tab) {
     this._tab = tab;
   }
 
-  public async waitForPageLoaded() {
-    return exec(this._tab.id!, async () => {
+  run<T>(func: (payload?: any) => Promise<T>, payload?: any): Promise<T> {
+    return exec(this._tab.id!, func, payload);
+  }
+}
+
+export class AmazonSearchPageInjector extends BaseInjector {
+  public waitForPageLoaded() {
+    return this.run(async () => {
       await new Promise((resolve) => setTimeout(resolve, 500 + ~~(500 * Math.random())));
       while (true) {
         const targetNode = document.querySelector('.s-pagination-next');
@@ -34,61 +40,81 @@ export class AmazonSearchPageInjector {
   }
 
   public async getPagePattern() {
-    return exec(this._tab.id!, async () => {
-      return [
-        ...(document.querySelectorAll<HTMLDivElement>(
+    return this.run(async () => {
+      return Array.from(
+        document.querySelectorAll<HTMLDivElement>(
           '.puisg-row:has(.a-section.a-spacing-small.a-spacing-top-small:not(.a-text-right))',
-        ) as unknown as HTMLDivElement[]),
-      ].filter((e) => e.getClientRects().length > 0).length > 0
+        ),
+      ).filter((e) => e.getClientRects().length > 0).length > 0
         ? 'pattern-1'
         : 'pattern-2';
     });
   }
 
   public async getPageData(pattern: 'pattern-1' | 'pattern-2') {
-    let data: { link: string; title: string; imageSrc: string }[] | null = null;
+    let data: Pick<AmazonSearchItem, 'link' | 'title' | 'imageSrc' | 'price'>[] | null = null;
     switch (pattern) {
       // 处理商品以列表形式展示的情况
       case 'pattern-1':
-        data = await exec(this._tab.id!, async () => {
+        data = await this.run(async () => {
           const items = Array.from(
             document.querySelectorAll<HTMLDivElement>(
               '.puisg-row:has(.a-section.a-spacing-small.a-spacing-top-small:not(.a-text-right))',
             ),
           ).filter((e) => e.getClientRects().length > 0);
-          const linkObjs = items.reduce<{ link: string; title: string; imageSrc: string }[]>(
-            (objs, el) => {
-              const link = el.querySelector<HTMLAnchorElement>('a')?.href;
-              const title = el
-                .querySelector<HTMLHeadingElement>('h2.a-color-base')!
-                .getAttribute('aria-label')!;
-              const imageSrc = el.querySelector<HTMLImageElement>('img.s-image')!.src!;
-              link && objs.push({ link, title, imageSrc });
-              return objs;
-            },
-            [],
-          );
+          const linkObjs = items.reduce<
+            Pick<AmazonSearchItem, 'link' | 'title' | 'imageSrc' | 'price'>[]
+          >((objs, el) => {
+            const link = el.querySelector<HTMLAnchorElement>('a')?.href;
+            const title = el
+              .querySelector<HTMLHeadingElement>('h2.a-color-base')!
+              .getAttribute('aria-label')!;
+            const imageSrc = el.querySelector<HTMLImageElement>('img.s-image')!.src!;
+            const price =
+              el.querySelector<HTMLElement>('.a-price:not(.a-text-price) .a-offscreen')
+                ?.innerText ||
+              (
+                document.evaluate(
+                  `.//div[@data-cy="secondary-offer-recipe"]//span[@class='a-color-base' and contains(., '$') and not(*)]`,
+                  el,
+                  null,
+                  XPathResult.FIRST_ORDERED_NODE_TYPE,
+                ).singleNodeValue as HTMLSpanElement | null
+              )?.innerText;
+            link && objs.push({ link, title, imageSrc, price });
+            return objs;
+          }, []);
           return linkObjs;
         });
         break;
       // 处理商品以二维图片格展示的情况
       case 'pattern-2':
-        data = await exec(this._tab.id!, async () => {
+        data = await this.run(async () => {
           const items = Array.from(
             document.querySelectorAll<HTMLDivElement>(
               '.puis-card-container:has(.a-section.a-spacing-small.puis-padding-left-small)',
             ) as unknown as HTMLDivElement[],
           ).filter((e) => e.getClientRects().length > 0);
-          const linkObjs = items.reduce<{ link: string; title: string; imageSrc: string }[]>(
-            (objs, el) => {
-              const link = el.querySelector<HTMLAnchorElement>('a.a-link-normal')?.href;
-              const title = el.querySelector<HTMLHeadingElement>('h2.a-color-base')!.innerText;
-              const imageSrc = el.querySelector<HTMLImageElement>('img.s-image')!.src!;
-              link && objs.push({ link, title, imageSrc });
-              return objs;
-            },
-            [],
-          );
+          const linkObjs = items.reduce<
+            Pick<AmazonSearchItem, 'link' | 'title' | 'imageSrc' | 'price'>[]
+          >((objs, el) => {
+            const link = el.querySelector<HTMLAnchorElement>('a.a-link-normal')?.href;
+            const title = el.querySelector<HTMLHeadingElement>('h2.a-color-base')!.innerText;
+            const imageSrc = el.querySelector<HTMLImageElement>('img.s-image')!.src!;
+            const price =
+              el.querySelector<HTMLElement>('.a-price:not(.a-text-price) .a-offscreen')
+                ?.innerText ||
+              (
+                document.evaluate(
+                  `.//div[@data-cy="secondary-offer-recipe"]//span[@class='a-color-base' and contains(., '$') and not(*)]`,
+                  el,
+                  null,
+                  XPathResult.FIRST_ORDERED_NODE_TYPE,
+                ).singleNodeValue as HTMLSpanElement | null
+              )?.innerText;
+            link && objs.push({ link, title, imageSrc, price });
+            return objs;
+          }, []);
           return linkObjs;
         });
         break;
@@ -100,7 +126,7 @@ export class AmazonSearchPageInjector {
   }
 
   public async getCurrentPage() {
-    return exec<number>(this._tab.id!, async () => {
+    return this.run(async () => {
       const node = document.querySelector<HTMLDivElement>(
         '.s-pagination-item.s-pagination-selected',
       );
@@ -109,7 +135,7 @@ export class AmazonSearchPageInjector {
   }
 
   public async determineHasNextPage() {
-    return exec(this._tab.id!, async () => {
+    return this.run(async () => {
       const nextButton = document.querySelector<HTMLLinkElement>('.s-pagination-next');
       if (nextButton) {
         if (!nextButton.classList.contains('s-pagination-disabled')) {
@@ -126,15 +152,9 @@ export class AmazonSearchPageInjector {
   }
 }
 
-export class AmazonDetailPageInjector {
-  readonly _tab: Tabs.Tab;
-
-  constructor(tab: Tabs.Tab) {
-    this._tab = tab;
-  }
-
+export class AmazonDetailPageInjector extends BaseInjector {
   public async waitForPageLoaded() {
-    return exec(this._tab.id!, async () => {
+    return this.run(async () => {
       while (true) {
         window.scrollBy(0, ~~(Math.random() * 500) + 500);
         await new Promise((resolve) => setTimeout(resolve, ~~(Math.random() * 100) + 200));
@@ -156,8 +176,18 @@ export class AmazonDetailPageInjector {
     });
   }
 
+  public async getBaseInfo() {
+    return this.run(async () => {
+      const title = document.querySelector<HTMLElement>('#title')!.innerText;
+      const price = document.querySelector<HTMLElement>(
+        '.a-price:not(.a-text-price) .a-offscreen',
+      )?.innerText;
+      return { title, price };
+    });
+  }
+
   public async getRatingInfo() {
-    return await exec(this._tab.id!, async () => {
+    return this.run(async () => {
       const review = document.querySelector('#averageCustomerReviews');
       const rating = Number(
         review?.querySelector('#acrPopover')?.getAttribute('title')?.split(' ')[0],
@@ -177,9 +207,9 @@ export class AmazonDetailPageInjector {
   }
 
   public async getRankText() {
-    return exec(this._tab.id!, async () => {
+    return this.run(async () => {
       const xpathExps = [
-        `//div[@id='detailBulletsWrapper_feature_div']//ul[.//li[contains(., 'Best Sellers Rank')]]//span[@class='a-list-item']`,
+        `//div[@id='detailBulletsWrapper_feature_div']//ul[.//li[contains(., 'Best Sellers Rank')]]//span[@class='a-list-item' and contains(., 'Best Sellers Rank')]`,
         `//div[@id='prodDetails']//table/tbody/tr[th[1][contains(text(), 'Best Sellers Rank')]]/td`,
         `//div[@id='productDetails_db_sections']//table/tbody/tr[th[1][contains(text(), 'Best Sellers Rank')]]/td`,
       ];
@@ -201,7 +231,7 @@ export class AmazonDetailPageInjector {
   }
 
   public async getImageUrls() {
-    return exec(this._tab.id!, async () => {
+    return this.run(async () => {
       let urls = Array.from(document.querySelectorAll<HTMLImageElement>('.imageThumbnail img')).map(
         (e) => e.src,
       );
@@ -212,11 +242,9 @@ export class AmazonDetailPageInjector {
           overlay.click();
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
-        urls = [
-          ...(document.querySelectorAll(
-            '#ivThumbs .ivThumbImage[style]',
-          ) as unknown as HTMLDivElement[]),
-        ].map((e) => e.style.background);
+        urls = Array.from(
+          document.querySelectorAll<HTMLDivElement>('#ivThumbs .ivThumbImage[style]'),
+        ).map((e) => e.style.background);
         urls = urls.map((s) => {
           const [url] = /(?<=url\(").+(?=")/.exec(s)!;
           return url;
@@ -243,7 +271,7 @@ export class AmazonDetailPageInjector {
   }
 
   public async getTopReviews() {
-    return exec<Omit<AmazonReview, 'asin'>[]>(this._tab.id!, async () => {
+    return this.run(async () => {
       const targetNode = document.querySelector<HTMLDivElement>('.cr-widget-FocalReviews');
       if (!targetNode) {
         return [];
@@ -258,18 +286,19 @@ export class AmazonDetailPageInjector {
         null,
         XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
       );
-      const items: Omit<AmazonReview, 'asin'>[] = [];
+      const items: AmazonReview[] = [];
       for (let i = 0; i < xResult.snapshotLength; i++) {
         const commentNode = xResult.snapshotItem(i) as HTMLDivElement | null;
         if (!commentNode) {
           continue;
         }
+        const id = commentNode.id.split('-')[0];
         const username = commentNode.querySelector<HTMLDivElement>('.a-profile-name')!.innerText;
         const title = commentNode.querySelector<HTMLDivElement>(
           '[data-hook="review-title"] > span:not(.a-letter-space)',
         )!.innerText;
         const rating = commentNode.querySelector<HTMLDivElement>(
-          '[data-hook="review-star-rating"]',
+          '[data-hook*="review-star-rating"]',
         )!.innerText;
         const dateInfo = commentNode.querySelector<HTMLDivElement>(
           '[data-hook="review-date"]',
@@ -277,9 +306,101 @@ export class AmazonDetailPageInjector {
         const content = commentNode.querySelector<HTMLDivElement>(
           '[data-hook="review-body"]',
         )!.innerText;
-        items.push({ username, title, rating, dateInfo, content });
+        items.push({ id, username, title, rating, dateInfo, content });
       }
       return items;
+    });
+  }
+}
+
+export class AmazonReviewPageInjector extends BaseInjector {
+  public async waitForPageLoad() {
+    return this.run(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      while (true) {
+        const targetNode = document.querySelector(
+          '#cm_cr-review_list .reviews-content,ul[role="list"]:not(.histogram)',
+        );
+        targetNode?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (
+          targetNode &&
+          targetNode.getClientRects().length > 0 &&
+          document.readyState !== 'loading'
+        ) {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      while (true) {
+        const loadingNode = document.querySelector('.reviews-loading');
+        if (loadingNode && loadingNode.getClientRects().length === 0) {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    });
+  }
+
+  public async getSinglePageReviews() {
+    return this.run(async () => {
+      const targetNode = document.querySelector('#cm_cr-review_list');
+      if (!targetNode) {
+        return [];
+      }
+      // targetNode.scrollIntoView({ behavior: "smooth", block: "end" })
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const xResult = document.evaluate(
+        `.//div[contains(@id, 'review-card')]`,
+        targetNode,
+        null,
+        XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+      );
+      const items: AmazonReview[] = [];
+      for (let i = 0; i < xResult.snapshotLength; i++) {
+        console.log('handling', i);
+
+        const commentNode = xResult.snapshotItem(i) as HTMLDivElement;
+        if (!commentNode) {
+          continue;
+        }
+        const id = commentNode.id.split('-')[0];
+        const username = commentNode.querySelector<HTMLDivElement>('.a-profile-name')!.innerText;
+        const title = commentNode.querySelector<HTMLDivElement>(
+          '[data-hook="review-title"] > span:not(.a-letter-space)',
+        )!.innerText;
+        const rating = commentNode.querySelector<HTMLDivElement>(
+          '[data-hook*="review-star-rating"]',
+        )!.innerText;
+        const dateInfo = commentNode.querySelector<HTMLDivElement>(
+          '[data-hook="review-date"]',
+        )!.innerText;
+        const content = commentNode.querySelector<HTMLDivElement>(
+          '[data-hook="review-body"]',
+        )!.innerText;
+        items.push({ id, username, title, rating, dateInfo, content });
+      }
+      return items;
+    });
+  }
+
+  public jumpToNextPageIfExist() {
+    return this.run(async () => {
+      const latestReview = document.evaluate(
+        `//*[@id='cm_cr-review_list']//li[@data-hook='review'][last()]`,
+        document.body,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+      ).singleNodeValue as HTMLElement | null;
+      latestReview?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const nextPageNode = document.querySelector<HTMLDivElement>(
+        '[data-hook="pagination-bar"] .a-pagination > *:nth-of-type(2)',
+      );
+      nextPageNode?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const ret = nextPageNode && !nextPageNode.classList.contains('a-disabled');
+      ret && nextPageNode?.querySelector('a')?.click();
+      return ret;
     });
   }
 }

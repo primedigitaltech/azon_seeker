@@ -2,7 +2,11 @@ import Emittery from 'emittery';
 import type { AmazonDetailItem, AmazonPageWorker, AmazonPageWorkerEvents } from './types';
 import type { Tabs } from 'webextension-polyfill';
 import { withErrorHandling } from '../error-handler';
-import { AmazonDetailPageInjector, AmazonSearchPageInjector } from '../web-injectors';
+import {
+  AmazonDetailPageInjector,
+  AmazonReviewPageInjector,
+  AmazonSearchPageInjector,
+} from '../web-injectors';
 
 /**
  * AmazonPageWorkerImpl can run on background & sidepanel & popup,
@@ -75,7 +79,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     }
     const currentUrl = new URL(tab.url!);
     if (currentUrl.hostname !== url.hostname || currentUrl.searchParams.get('k') !== keywords) {
-      await browser.tabs.update(tab.id, { url: url.toString() });
+      tab = await browser.tabs.update(tab.id, { url: url.toString(), active: true });
       await new Promise<void>((resolve) => setTimeout(resolve, 1000));
     }
     return url.toString();
@@ -127,9 +131,17 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     }
     const injector = new AmazonDetailPageInjector(tab);
     //#endregion
-    //#region Await Production Introduction Element Loaded and Determine Page Pattern
+    //#region Await Production Introduction Element Loaded
     await injector.waitForPageLoaded();
     await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait 3 seconds.
+    //#endregion
+    //#region Fetch Base Info
+    const baseInfo = await injector.getBaseInfo();
+    this.channel.emit('item-base-info-collected', {
+      asin: params.asin,
+      title: baseInfo.title,
+      price: baseInfo.price,
+    });
     //#endregion
     //#region Fetch Rating Info
     const ratingInfo = await injector.getRatingInfo();
@@ -181,9 +193,26 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     reviews.length > 0 &&
       this.channel.emit('item-top-reviews-collected', {
         asin: params.asin,
-        topReviews: reviews.map((r) => ({ asin: params.asin, ...r })),
+        topReviews: reviews,
       });
     //#endregion
+  }
+
+  @withErrorHandling
+  public async wanderReviewPage(asin: string) {
+    const baseUrl = `https://www.amazon.com/product-reviews/${asin}/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews`;
+    const tab = await this.createNewTab(baseUrl);
+    const injector = new AmazonReviewPageInjector(tab);
+    while (true) {
+      await injector.waitForPageLoad();
+      const reviews = await injector.getSinglePageReviews();
+      reviews.length > 0 && this.channel.emit('item-review-collected', { asin, reviews });
+      const hasNextPage = await injector.jumpToNextPageIfExist();
+      if (!hasNextPage) {
+        break;
+      }
+    }
+    setTimeout(() => browser.tabs.remove(tab.id!), 1000);
   }
 
   public async runSearchPageTask(
@@ -221,17 +250,29 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     unsubscribe();
   }
 
+  public async runReviewPageTask(
+    asins: string[],
+    progress?: (remains: string[]) => Promise<void>,
+  ): Promise<void> {
+    let remains = [...asins];
+    while (remains.length > 0) {
+      const asin = remains.shift()!;
+      await this.wanderReviewPage(asin);
+      progress && progress(remains);
+    }
+  }
+
   public async stop(): Promise<void> {
     this._controlChannel.emit('interrupt');
   }
 }
 
-class PageWorkerFactory {
+class PageWorker {
   public useAmazonPageWorker(): AmazonPageWorker {
     return AmazonPageWorkerImpl.getInstance();
   }
 }
 
-const pageWorkerFactory = new PageWorkerFactory();
+const pageWorker = new PageWorker();
 
-export default pageWorkerFactory;
+export default pageWorker;

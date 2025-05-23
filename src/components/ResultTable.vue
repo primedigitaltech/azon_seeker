@@ -24,7 +24,7 @@ const filterFormItems = computed(() => {
       params: {
         options: [
           ...records.reduce((o, c) => {
-            o.add(c.keywords);
+            c.keywords && o.add(c.keywords);
             return o;
           }, new Set<string>()),
         ].map((opt) => ({
@@ -68,6 +68,11 @@ const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
     minWidth: 60,
   },
   {
+    title: 'ASIN',
+    key: 'asin',
+    minWidth: 130,
+  },
+  {
     title: '标题',
     key: 'title',
     render(row) {
@@ -75,9 +80,9 @@ const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
     },
   },
   {
-    title: 'ASIN',
-    key: 'asin',
-    minWidth: 130,
+    title: '价格',
+    key: 'price',
+    minWidth: 100,
   },
   {
     title: '封面图',
@@ -141,6 +146,12 @@ const extraHeaders: Header[] = [
     formatOutputValue: (val?: string[]) => val?.join(';'),
     parseImportValue: (val?: string) => val?.split(';'),
   },
+  {
+    prop: 'topReviews',
+    label: '精选评论',
+    formatOutputValue: (val?: Record<string, any>[]) => JSON.stringify(val),
+    parseImportValue: (val?: string) => val && JSON.parse(val),
+  },
 ];
 
 const filterItemData = (data: AmazonItem[]): AmazonItem[] => {
@@ -148,7 +159,7 @@ const filterItemData = (data: AmazonItem[]): AmazonItem[] => {
   if (search.trim() !== '') {
     data = data.filter((r) => {
       return [r.title, r.asin, r.keywords].some((field) =>
-        field.toLowerCase().includes(search.toLowerCase()),
+        field?.toLowerCase().includes(search.toLowerCase()),
       );
     });
   }

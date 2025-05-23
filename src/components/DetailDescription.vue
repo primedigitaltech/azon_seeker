@@ -33,12 +33,14 @@ const props = defineProps<{ model: AmazonDetailItem }>();
           {{ link }}
         </div>
       </n-descriptions-item>
-      <n-descriptions-item label="评论" :span="2">
+      <n-descriptions-item v-if="props.model.topReviews" label="精选评论" :span="4">
         <div v-for="review in props.model.topReviews" style="margin-bottom: 5px">
-          <h5 style="margin: 0">{{ review.username }}:</h5>
+          <h3 style="margin: 0">{{ review.username }}: {{ review.title }}</h3>
+          <div style="color: gray; font-size: smaller">{{ review.rating }}</div>
           <div v-for="paragraph in review.content.split('\n')">
             {{ paragraph }}
           </div>
+          <div style="color: gray; font-size: smaller">{{ review.dateInfo }}</div>
         </div>
       </n-descriptions-item>
     </n-descriptions>

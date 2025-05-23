@@ -7,27 +7,32 @@ export const asinInputText = useWebExtensionStorage<string>('asinInputText', '')
 
 export const searchItems = useWebExtensionStorage<AmazonSearchItem[]>('searchItems', []);
 
-export const detailItems = useWebExtensionStorage<AmazonDetailItem[]>('detailItems', []);
+export const detailItems = useWebExtensionStorage<Map<string, AmazonDetailItem>>(
+  'detailItems',
+  new Map(),
+  {
+    listenToStorageChanges: false,
+  },
+);
 
 export const allItems = computed({
   get() {
     const sItems = searchItems.value;
-    const dItems = detailItems.value.reduce<Map<string, AmazonDetailItem>>(
-      (m, c) => (m.set(c.asin, c), m),
-      new Map(),
-    );
+    const dItems = detailItems.value;
     return sItems.map<AmazonItem>((si) => {
       const asin = si.asin;
       const dItem = dItems.get(asin);
-      return dItem ? { ...si, ...dItem, hasDetail: true } : { ...si, hasDetail: false };
+      return dItems.has(asin) ? { ...si, ...dItem, hasDetail: true } : { ...si, hasDetail: false };
     });
   },
   set(newValue) {
     const searchItemProps: (keyof AmazonSearchItem)[] = [
       'keywords',
       'asin',
+      'page',
       'title',
       'imageSrc',
+      'price',
       'link',
       'rank',
       'createTime',
@@ -45,14 +50,17 @@ export const allItems = computed({
       'imageUrls',
       'rating',
       'ratingCount',
+      'topReviews',
     ];
     detailItems.value = newValue
       .filter((row) => row.hasDetail)
-      .map((row) => {
-        const entries: [string, unknown][] = Object.entries(row).filter(([key]) =>
+      .reduce<Map<string, AmazonDetailItem>>((m, row) => {
+        const entries = Object.entries(row).filter(([key]) =>
           detailItemsProps.includes(key as keyof AmazonDetailItem),
         );
-        return Object.fromEntries(entries) as AmazonSearchItem;
-      });
+        const obj = Object.fromEntries(entries) as AmazonDetailItem;
+        m.set(obj.asin, obj);
+        return m;
+      }, new Map());
   },
 });
