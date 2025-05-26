@@ -1,20 +1,10 @@
 <script setup lang="ts">
-import type { FormItemRule, UploadOnChange } from 'naive-ui';
+import { useLongTask } from '~/composables/useLongTask';
 import pageWorker from '~/logic/page-worker';
 import { AmazonDetailItem } from '~/logic/page-worker/types';
-import { asinInputText, detailItems } from '~/logic/storage';
+import { detailAsinInput, detailItems } from '~/logic/storage';
 
 const message = useMessage();
-
-const formItemRef = useTemplateRef('detail-form-item');
-const formItemRule: FormItemRule = {
-  required: true,
-  trigger: ['submit', 'blur'],
-  message: '请输入格式正确的ASIN',
-  validator: () => {
-    return asinInputText.value.match(/^[A-Z0-9]{10}((\n|\s|,|;)[A-Z0-9]{10})*\n?$/g) !== null;
-  },
-};
 
 const timelines = ref<
   {
@@ -25,7 +15,9 @@ const timelines = ref<
   }[]
 >([]);
 
-const running = ref(false);
+const { isRunning, startTask } = useLongTask();
+
+const asinInputRef = useTemplateRef('asin-input');
 
 //#region Page Worker 初始化Code
 const worker = pageWorker.useAmazonPageWorker(); // 获取Page Worker单例
@@ -37,7 +29,7 @@ worker.channel.on('error', ({ message: msg }) => {
     content: msg,
   });
   message.error(msg);
-  running.value = false;
+  worker.stop();
 });
 worker.channel.on('item-base-info-collected', (ev) => {
   timelines.value.push({
@@ -98,72 +90,33 @@ const updateDetailItems = (row: { asin: string } & Partial<AmazonDetailItem>) =>
 };
 //#endregion
 
-const handleImportAsin: UploadOnChange = ({ fileList }) => {
-  if (fileList.length > 0) {
-    const file = fileList.pop();
-    if (file && file.file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result;
-        if (typeof content === 'string') {
-          asinInputText.value = content;
-        }
-      };
-      reader.readAsText(file.file, 'utf-8');
-    }
-  }
-};
-
-const handleExportAsin = () => {
-  const blob = new Blob([asinInputText.value], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const filename = `asin-${new Date().toISOString()}.txt`;
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-  message.info('导出完成');
-};
-
-const handleFetchInfoFromPage = () => {
-  const runTask = async () => {
-    const asinList = asinInputText.value.split(/\n|\s|,|;/).filter((item) => item.length > 0);
-    running.value = true;
-    timelines.value = [
-      {
-        type: 'info',
-        title: '开始',
-        time: new Date().toLocaleString(),
-        content: '开始数据采集',
-      },
-    ];
-    await worker.runDetaiPageTask(asinList, async (remains) => {
-      asinInputText.value = remains.join('\n');
-    });
-    timelines.value.push({
+const task = async () => {
+  const asinList = detailAsinInput.value.split(/\n|\s|,|;/).filter((item) => item.length > 0);
+  timelines.value = [
+    {
       type: 'info',
-      title: '结束',
+      title: '开始',
       time: new Date().toLocaleString(),
-      content: '数据采集完成',
-    });
-    running.value = false;
-  };
-  formItemRef.value?.validate({
-    callback: (errors) => {
-      if (errors) {
-        return;
-      } else {
-        runTask();
-      }
+      content: '开始数据采集',
     },
+  ];
+  await worker.runDetaiPageTask(asinList, async (remains) => {
+    detailAsinInput.value = remains.join('\n');
+  });
+  timelines.value.push({
+    type: 'info',
+    title: '结束',
+    time: new Date().toLocaleString(),
+    content: '数据采集完成',
   });
 };
 
+const handleStart = () => {
+  asinInputRef.value?.validate().then(async (success) => success && startTask(task));
+};
+
 const handleInterrupt = () => {
-  if (!running.value) return;
+  if (!isRunning.value) return;
   worker.stop();
   message.info('已触发中断，正在等待当前任务完成。', { duration: 2000 });
 };
@@ -173,37 +126,8 @@ const handleInterrupt = () => {
   <div class="detail-page-entry">
     <header-title>Detail Page</header-title>
     <div class="interative-section">
-      <n-space>
-        <n-upload @change="handleImportAsin" accept=".txt" :max="1">
-          <n-button :disabled="running" round size="small">
-            <template #icon>
-              <gg-import />
-            </template>
-            导入
-          </n-button>
-        </n-upload>
-        <n-button :disabled="running" @click="handleExportAsin" round size="small">
-          <template #icon>
-            <ion-arrow-up-right-box-outline />
-          </template>
-          导出
-        </n-button>
-      </n-space>
-      <n-form-item
-        ref="detail-form-item"
-        label-placement="left"
-        :rule="formItemRule"
-        style="padding-top: 0px"
-      >
-        <n-input
-          :disabled="running"
-          v-model:value="asinInputText"
-          placeholder="输入ASINs"
-          type="textarea"
-          size="large"
-        />
-      </n-form-item>
-      <n-button v-if="!running" round size="large" type="primary" @click="handleFetchInfoFromPage">
+      <asins-input v-model="detailAsinInput" :disabled="isRunning" ref="asin-input" />
+      <n-button v-if="!isRunning" round size="large" type="primary" @click="handleStart">
         <template #icon>
           <ant-design-thunderbolt-outlined />
         </template>
@@ -216,7 +140,7 @@ const handleInterrupt = () => {
         停止
       </n-button>
     </div>
-    <div v-if="running" class="running-tip-section">
+    <div v-if="isRunning" class="running-tip-section">
       <n-alert title="Warning" type="warning"> 警告，在插件运行期间请勿与浏览器交互。 </n-alert>
     </div>
     <progress-report class="progress-report" :timelines="timelines" />
@@ -230,29 +154,29 @@ const handleInterrupt = () => {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
 
-  .interative-section {
-    display: flex;
-    flex-direction: column;
-    padding: 15px;
-    align-items: stretch;
-    justify-content: center;
-    width: 85%;
-    border-radius: 10px;
-    border: 1px #00000020 dashed;
-    margin: 0 0 10px 0;
-  }
+.interative-section {
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  align-items: stretch;
+  justify-content: center;
+  width: 85%;
+  border-radius: 10px;
+  border: 1px #00000020 dashed;
+  margin: 0 0 10px 0;
+}
 
-  .running-tip-section {
-    margin: 10px 0 0 0;
-    height: 100px;
-    border-radius: 10px;
-    cursor: wait;
-  }
+.running-tip-section {
+  margin: 10px 0 0 0;
+  height: 100px;
+  border-radius: 10px;
+  cursor: wait;
+}
 
-  .progress-report {
-    margin-top: 10px;
-    width: 95%;
-  }
+.progress-report {
+  margin-top: 10px;
+  width: 95%;
 }
 </style>

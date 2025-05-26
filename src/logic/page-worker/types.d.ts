@@ -32,6 +32,7 @@ type AmazonReview = {
   rating: string;
   dateInfo: string;
   content: string;
+  imageSrc: string[];
 };
 
 type AmazonItem = Pick<AmazonSearchItem, 'asin'> &

@@ -3,7 +3,9 @@ import type { AmazonDetailItem, AmazonItem, AmazonSearchItem } from './page-work
 
 export const keywordsList = useWebExtensionStorage<string[]>('keywordsList', ['']);
 
-export const asinInputText = useWebExtensionStorage<string>('asinInputText', '');
+export const detailAsinInput = useWebExtensionStorage<string>('detailAsinInputText', '');
+
+export const reviewAsinInput = useWebExtensionStorage<string>('reviewAsinInputText', '');
 
 export const searchItems = useWebExtensionStorage<AmazonSearchItem[]>('searchItems', []);
 
@@ -17,8 +19,8 @@ export const detailItems = useWebExtensionStorage<Map<string, AmazonDetailItem>>
 
 export const allItems = computed({
   get() {
-    const sItems = searchItems.value;
-    const dItems = detailItems.value;
+    const sItems = unref(searchItems);
+    const dItems = unref(detailItems);
     return sItems.map<AmazonItem>((si) => {
       const asin = si.asin;
       const dItem = dItems.get(asin);
@@ -45,6 +47,8 @@ export const allItems = computed({
     });
     const detailItemsProps: (keyof AmazonDetailItem)[] = [
       'asin',
+      'title',
+      'price',
       'category1',
       'category2',
       'imageUrls',

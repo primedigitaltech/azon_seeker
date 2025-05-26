@@ -20,4 +20,16 @@ if (USE_SIDE_PANEL) {
 browser.runtime.onInstalled.addListener(() => {
   // eslint-disable-next-line no-console
   console.log('Azon Seeker installed');
+
+  browser.contextMenus.create({
+    id: 'show-result',
+    title: '结果页',
+    contexts: ['action'],
+  });
+});
+
+browser.contextMenus.onClicked.addListener((info) => {
+  if (info.menuItemId === 'show-result') {
+    browser.runtime.openOptionsPage();
+  }
 });

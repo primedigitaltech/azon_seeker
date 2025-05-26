@@ -1,5 +1,5 @@
 import fs from 'fs-extra';
-import type { Manifest } from 'webextension-polyfill';
+import { type Manifest } from 'webextension-polyfill';
 import type PkgType from '../package.json';
 import { isDev, isFirefox, port, r } from '../scripts/utils';
 
@@ -33,7 +33,15 @@ export async function getManifest() {
       48: './assets/icon-512.png',
       128: './assets/icon-512.png',
     },
-    permissions: ['tabs', 'storage', 'activeTab', 'sidePanel', 'scripting', 'unlimitedStorage'],
+    permissions: [
+      'tabs',
+      'storage',
+      'activeTab',
+      'sidePanel',
+      'scripting',
+      'unlimitedStorage',
+      'contextMenus',
+    ],
     host_permissions: ['*://*/*'],
     content_scripts: [
       {

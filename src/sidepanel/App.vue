@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { GlobalThemeOverrides } from 'naive-ui';
-import SidePanel from './SidePanel.vue';
+import SidePanel from './Sidepanel.vue';
 
 const theme: GlobalThemeOverrides = {
   common: {

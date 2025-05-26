@@ -37,15 +37,16 @@ export async function exec<T, P extends Record<string, unknown>>(
   };
   return new Promise<T>(async (resolve, reject) => {
     setTimeout(() => reject('脚本运行超时'), timeout);
-    const injectResults = await browser.scripting.executeScript({
-      target: { tabId },
-      func,
-      args: payload ? [payload] : undefined,
-    });
-    const ret = injectResults.pop();
-    if (ret?.error) {
-      reject(`注入脚本时发生错误: ${ret.error}`); // 似乎无法走到这一步
+    try {
+      const injectResults = await browser.scripting.executeScript({
+        target: { tabId },
+        func,
+        args: payload ? [payload] : undefined,
+      });
+      const ret = injectResults.pop();
+      resolve(ret!.result as T);
+    } catch (e) {
+      throw new Error(`入脚本运行失败: ${e}`);
     }
-    resolve(ret!.result as T);
   });
 }

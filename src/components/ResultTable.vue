@@ -1,14 +1,26 @@
 <script setup lang="ts">
-import { NButton, UploadOnChange } from 'naive-ui';
+import { NButton } from 'naive-ui';
 import type { TableColumn } from 'naive-ui/es/data-table/src/interface';
 import { exportToXLSX, Header, importFromXLSX } from '~/logic/data-io';
 import type { AmazonDetailItem, AmazonItem } from '~/logic/page-worker/types';
 import { allItems } from '~/logic/storage';
 import DetailDescription from './DetailDescription.vue';
+import { useFileDialog } from '@vueuse/core';
 
 const message = useMessage();
 
+const fileDialog = useFileDialog({
+  accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  multiple: false,
+});
+fileDialog.onChange((files) => {
+  const file = files?.item(0);
+  file && handleImport(file);
+  fileDialog.reset();
+});
+
 const page = reactive({ current: 1, size: 10 });
+
 const filter = reactive({
   keywords: null as string | null,
   search: '',
@@ -120,10 +132,14 @@ const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
 const itemView = computed<{ records: AmazonItem[]; pageCount: number; origin: AmazonItem[] }>(
   () => {
     const { current, size } = page;
-    let data = filterItemData(allItems.value); // Filter Data
-    let pageCount = ~~(data.length / size);
-    pageCount += data.length % size > 0 ? 1 : 0;
-    return { records: data.slice((current - 1) * size, current * size), pageCount, origin: data };
+    const data = filterItemData(allItems.value); // Filter Data
+    const pageCount = ~~(data.length / size) + (data.length % size > 0 ? 1 : 0);
+    const offset = (current - 1) * size;
+    if (data.length > 0 && offset >= data.length) {
+      page.current = 1;
+    }
+    const records = data.slice(offset, offset + size);
+    return { records, pageCount, origin: data };
   },
 );
 
@@ -189,11 +205,7 @@ const handleExport = async () => {
   message.info('导出完成');
 };
 
-const handleImport: UploadOnChange = async ({ fileList }) => {
-  if (fileList.length !== 1 || fileList[0].file === null) {
-    return;
-  }
-  const file: File = fileList.pop()!.file!;
+const handleImport = async (file: File) => {
   const headers: Header[] = columns
     .reduce(
       (p, v: Record<string, any>) => {
@@ -234,65 +246,66 @@ const handleClearData = async () => {
             size="small"
             placeholder="输入文本过滤结果"
             round
+            style="min-width: 230px"
           />
-          <n-popconfirm
-            placement="bottom"
-            @positive-click="handleClearData"
-            positive-text="确定"
-            negative-text="取消"
-          >
-            <template #trigger>
-              <n-button type="error" tertiary circle size="small">
-                <template #icon>
-                  <ion-trash-outline />
-                </template>
-              </n-button>
-            </template>
-            确认清空所有数据吗？
-          </n-popconfirm>
-          <n-upload
-            accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            :max="1"
-            @change="handleImport"
-          >
-            <n-button type="primary" tertiary circle size="small">
+          <n-button-group class="button-group">
+            <n-popconfirm
+              placement="bottom"
+              @positive-click="handleClearData"
+              positive-text="确定"
+              negative-text="取消"
+            >
+              <template #trigger>
+                <n-button type="default" ghost round size="small">
+                  <template #icon>
+                    <ion-trash-outline />
+                  </template>
+                  清空
+                </n-button>
+              </template>
+              确认清空所有数据吗？
+            </n-popconfirm>
+            <n-button type="default" ghost round @click="fileDialog.open()" size="small">
               <template #icon>
                 <gg-import />
               </template>
+              导入
             </n-button>
-          </n-upload>
-          <n-button type="primary" tertiary circle size="small" @click="handleExport">
-            <template #icon>
-              <ion-arrow-up-right-box-outline />
-            </template>
-          </n-button>
-          <n-popover trigger="hover" placement="bottom">
-            <template #trigger>
-              <n-button type="primary" tertiary circle size="small">
-                <template #icon>
-                  <ant-design-filter-outlined />
-                </template>
-              </n-button>
-            </template>
-            <div class="filter-section">
-              <div class="filter-title">筛选器</div>
-              <n-form :model="filter" label-placement="left">
-                <n-form-item v-for="item in filterFormItems" :label="item.label">
-                  <n-select
-                    v-if="item.type === 'select'"
-                    placeholder=""
-                    v-model:value="filter.keywords"
-                    clearable
-                    :options="item.params.options"
-                  />
-                </n-form-item>
-              </n-form>
-              <div class="filter-footer" @click="onFilterReset"><n-button>重置</n-button></div>
-            </div>
-          </n-popover>
+            <n-button type="default" ghost round size="small" @click="handleExport">
+              <template #icon>
+                <ion-arrow-up-right-box-outline />
+              </template>
+              导出
+            </n-button>
+            <n-popover trigger="hover" placement="bottom">
+              <template #trigger>
+                <n-button type="default" ghost round size="small">
+                  <template #icon>
+                    <ant-design-filter-outlined />
+                  </template>
+                  过滤
+                </n-button>
+              </template>
+              <div class="filter-section">
+                <div class="filter-title">筛选器</div>
+                <n-form :model="filter" label-placement="left">
+                  <n-form-item v-for="item in filterFormItems" :label="item.label">
+                    <n-select
+                      v-if="item.type === 'select'"
+                      placeholder=""
+                      v-model:value="filter.keywords"
+                      clearable
+                      :options="item.params.options"
+                    />
+                  </n-form-item>
+                </n-form>
+                <div class="filter-footer" @click="onFilterReset"><n-button>重置</n-button></div>
+              </div>
+            </n-popover>
+          </n-button-group>
         </n-space>
       </template>
-      <n-empty v-if="allItems.length === 0" size="huge" style="padding-top: 40px">
+      <n-empty v-if="allItems.length === 0" size="huge">
         <template #icon>
           <n-icon size="60">
             <solar-cat-linear />
@@ -324,7 +337,13 @@ const handleClearData = async () => {
 
 <style lang="scss" scoped>
 .result-content-container {
-  width: 100%;
+  min-height: 100%;
+  :deep(.n-card__content:has(.n-empty)) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: center;
+  }
 }
 
 :deep(.filter-switch) {

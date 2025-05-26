@@ -306,7 +306,12 @@ export class AmazonDetailPageInjector extends BaseInjector {
         const content = commentNode.querySelector<HTMLDivElement>(
           '[data-hook="review-body"]',
         )!.innerText;
-        items.push({ id, username, title, rating, dateInfo, content });
+        const imageSrc = Array.from(
+          commentNode.querySelectorAll<HTMLImageElement>(
+            '.review-image-tile-section img[src] img[src]',
+          ),
+        ).map((e) => e.getAttribute('src')!);
+        items.push({ id, username, title, rating, dateInfo, content, imageSrc });
       }
       return items;
     });
@@ -377,7 +382,10 @@ export class AmazonReviewPageInjector extends BaseInjector {
         const content = commentNode.querySelector<HTMLDivElement>(
           '[data-hook="review-body"]',
         )!.innerText;
-        items.push({ id, username, title, rating, dateInfo, content });
+        const imageSrc = Array.from(
+          commentNode.querySelectorAll<HTMLImageElement>('.review-image-tile-section img[src]'),
+        ).map((e) => e.getAttribute('src')!);
+        items.push({ id, username, title, rating, dateInfo, content, imageSrc });
       }
       return items;
     });

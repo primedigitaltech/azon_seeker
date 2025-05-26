@@ -14,7 +14,8 @@ main {
   align-items: center;
 
   .result-table {
-    width: 95%;
+    height: 90vh;
+    width: 95vw;
   }
 }
 </style>

@@ -33,18 +33,34 @@ const props = defineProps<{ model: AmazonDetailItem }>();
           {{ link }}
         </div>
       </n-descriptions-item>
-      <n-descriptions-item v-if="props.model.topReviews" label="精选评论" :span="4">
-        <div v-for="review in props.model.topReviews" style="margin-bottom: 5px">
-          <h3 style="margin: 0">{{ review.username }}: {{ review.title }}</h3>
-          <div style="color: gray; font-size: smaller">{{ review.rating }}</div>
-          <div v-for="paragraph in review.content.split('\n')">
-            {{ paragraph }}
+      <n-descriptions-item
+        v-if="props.model.topReviews && props.model.topReviews.length > 0"
+        label="精选评论"
+        :span="4"
+      >
+        <n-scrollbar style="max-height: 500px">
+          <div class="review-item-cotent">
+            <div v-for="review in props.model.topReviews" style="margin-bottom: 5px">
+              <h3 style="margin: 0">{{ review.username }}: {{ review.title }}</h3>
+              <div style="color: gray; font-size: smaller">{{ review.rating }}</div>
+              <div v-for="paragraph in review.content.split('\n')">
+                {{ paragraph }}
+              </div>
+              <div style="color: gray; font-size: smaller">{{ review.dateInfo }}</div>
+            </div>
           </div>
-          <div style="color: gray; font-size: smaller">{{ review.dateInfo }}</div>
+        </n-scrollbar>
+        <div class="review-item-footer">
+          <n-button size="small">Load More</n-button>
         </div>
       </n-descriptions-item>
     </n-descriptions>
   </div>
 </template>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.review-item-footer {
+  display: flex;
+  flex-direction: row-reverse;
+}
+</style>

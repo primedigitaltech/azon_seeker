@@ -3,8 +3,11 @@ import { keywordsList } from '~/logic/storage';
 import pageWorker from '~/logic/page-worker';
 import { NButton } from 'naive-ui';
 import { searchItems } from '~/logic/storage';
+import { useLongTask } from '~/composables/useLongTask';
 
 const message = useMessage();
+const { isRunning, startTask } = useLongTask();
+
 //#region Initial Page Worker
 const worker = pageWorker.useAmazonPageWorker();
 worker.channel.on('error', ({ message: msg }) => {
@@ -16,7 +19,6 @@ worker.channel.on('error', ({ message: msg }) => {
   });
   message.error(msg);
   worker.stop();
-  running.value = false;
 });
 worker.channel.on('item-links-collected', ({ objs }) => {
   timelines.value.push({
@@ -28,7 +30,6 @@ worker.channel.on('item-links-collected', ({ objs }) => {
   searchItems.value = searchItems.value.concat(objs); // Add records
 });
 //#endregion
-const running = ref(false);
 
 const timelines = ref<
   {
@@ -39,12 +40,8 @@ const timelines = ref<
   }[]
 >([]);
 
-const handleFetchInfoFromPage = async () => {
-  if (keywordsList.value.length === 0) {
-    return;
-  }
+const task = async () => {
   const kws = unref(keywordsList);
-  running.value = true;
   timelines.value = [
     {
       type: 'info',
@@ -71,11 +68,17 @@ const handleFetchInfoFromPage = async () => {
     time: new Date().toLocaleString(),
     content: `搜索任务结束`,
   });
-  running.value = false;
+};
+
+const handleStart = async () => {
+  if (keywordsList.value.length === 0) {
+    return;
+  }
+  startTask(task);
 };
 
 const handleInterrupt = () => {
-  if (!running.value) return;
+  if (!isRunning.value) return;
   worker.stop();
   message.info('已触发中断，正在等待当前任务完成。', { duration: 2000 });
 };
@@ -86,7 +89,7 @@ const handleInterrupt = () => {
     <header-title>Search Page</header-title>
     <div class="interactive-section">
       <n-dynamic-input
-        :disabled="running"
+        :disabled="isRunning"
         v-model:value="keywordsList"
         :min="1"
         :max="10"
@@ -96,7 +99,7 @@ const handleInterrupt = () => {
         round
         placeholder="请输入关键词采集信息"
       />
-      <n-button v-if="!running" type="primary" round size="large" @click="handleFetchInfoFromPage">
+      <n-button v-if="!isRunning" type="primary" round size="large" @click="handleStart">
         <template #icon>
           <n-icon>
             <ant-design-thunderbolt-outlined />
@@ -113,7 +116,7 @@ const handleInterrupt = () => {
         中断
       </n-button>
     </div>
-    <div v-if="running" class="running-tip-section">
+    <div v-if="isRunning" class="running-tip-section">
       <n-alert title="Warning" type="warning"> 警告，在插件运行期间请勿与浏览器交互。 </n-alert>
     </div>
     <progress-report class="progress-report" :timelines="timelines" />
