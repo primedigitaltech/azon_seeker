@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { useLongTask } from '~/composables/useLongTask';
 import pageWorker from '~/logic/page-worker';
-import { reviewAsinInput } from '~/logic/storage';
+import type { AmazonReview } from '~/logic/page-worker/types';
+import { reviewAsinInput, reviewItems } from '~/logic/storage';
 
 const worker = pageWorker.useAmazonPageWorker();
 worker.channel.on('error', ({ message: msg }) => {
@@ -11,6 +12,7 @@ worker.channel.on('error', ({ message: msg }) => {
     time: new Date().toLocaleString(),
     content: msg,
   });
+  worker.stop();
 });
 worker.channel.on('item-review-collected', (ev) => {
   timelines.value.push({
@@ -19,6 +21,7 @@ worker.channel.on('item-review-collected', (ev) => {
     time: new Date().toLocaleString(),
     content: `获取到 ${ev.reviews.length} 条评价`,
   });
+  updateReviews(ev);
 });
 
 const { isRunning, startTask } = useLongTask();
@@ -64,6 +67,18 @@ const handleStart = () => {
 const handleInterrupt = () => {
   worker.stop();
   message.info('已触发中断，正在等待当前任务完成。', { duration: 2000 });
+};
+
+const updateReviews = (params: { asin: string; reviews: AmazonReview[] }) => {
+  const { asin, reviews } = params;
+  const values = toRaw(reviewItems.value).get(asin) || [];
+  const ids = new Set(values.map((item) => item.id));
+  for (const review of reviews) {
+    ids.has(review.id) || values.push(review);
+  }
+  values.sort((a, b) => dayjs(b.dateInfo).valueOf() - dayjs(a.dateInfo).valueOf());
+  reviewItems.value.delete(asin);
+  reviewItems.value.set(asin, values);
 };
 </script>
 

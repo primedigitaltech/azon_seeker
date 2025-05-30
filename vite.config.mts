@@ -30,10 +30,13 @@ export const sharedConfig: UserConfig = {
       imports: [
         'vue',
         {
+          dayjs: [['=', 'dayjs']],
+        },
+        {
           'webextension-polyfill': [['=', 'browser']],
         },
         {
-          'naive-ui': ['useDialog', 'useMessage', 'useNotification', 'useLoadingBar'],
+          'naive-ui': ['useDialog', 'useMessage', 'useNotification', 'useLoadingBar', 'useModal'],
         },
       ],
       dts: r('src/auto-imports.d.ts'),

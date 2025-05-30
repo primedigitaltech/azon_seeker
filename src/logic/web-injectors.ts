@@ -9,8 +9,11 @@ class BaseInjector {
     this._tab = tab;
   }
 
-  run<T>(func: (payload?: any) => Promise<T>, payload?: any): Promise<T> {
-    return exec(this._tab.id!, func, payload);
+  run<T, P extends Record<string, unknown>>(
+    func: (payload: P) => Promise<T>,
+    payload?: P,
+  ): Promise<T> {
+    return exec(this._tab.id!, func, payload as P);
   }
 }
 
@@ -324,7 +327,7 @@ export class AmazonReviewPageInjector extends BaseInjector {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       while (true) {
         const targetNode = document.querySelector(
-          '#cm_cr-review_list .reviews-content,ul[role="list"]:not(.histogram)',
+          '.reviews-content, #cm_cr-review_list ul[role="list"]:not(.histogram)',
         );
         targetNode?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         if (
@@ -410,5 +413,35 @@ export class AmazonReviewPageInjector extends BaseInjector {
       ret && nextPageNode?.querySelector('a')?.click();
       return ret;
     });
+  }
+
+  public async showStarsDropDownMenu() {
+    return this.run(async () => {
+      while (true) {
+        const dropdown = document.querySelector<HTMLDivElement>('#star-count-dropdown')!;
+        dropdown.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        dropdown.click();
+        if (dropdown.getAttribute('aria-expanded') === 'true') {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    });
+  }
+
+  public async selectStar(star: number) {
+    return this.run(
+      async ({ star }) => {
+        const starNode = document.evaluate(
+          `//ul[@role='listbox']/li/a[text()="${star} star only"]`,
+          document.body,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+        ).singleNodeValue as HTMLAnchorElement;
+        starNode.click();
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      },
+      { star },
+    );
   }
 }

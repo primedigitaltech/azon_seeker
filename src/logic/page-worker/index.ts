@@ -200,16 +200,23 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
 
   @withErrorHandling
   public async wanderReviewPage(asin: string) {
-    const baseUrl = `https://www.amazon.com/product-reviews/${asin}/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews`;
-    const tab = await this.createNewTab(baseUrl);
+    const url = new URL(
+      `https://www.amazon.com/product-reviews/${asin}/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews`,
+    );
+    const tab = await this.createNewTab(url.toString());
     const injector = new AmazonReviewPageInjector(tab);
-    while (true) {
-      await injector.waitForPageLoad();
-      const reviews = await injector.getSinglePageReviews();
-      reviews.length > 0 && this.channel.emit('item-review-collected', { asin, reviews });
-      const hasNextPage = await injector.jumpToNextPageIfExist();
-      if (!hasNextPage) {
-        break;
+    await injector.waitForPageLoad();
+    for (let star = 1; star <= 5; star++) {
+      await injector.showStarsDropDownMenu();
+      await injector.selectStar(star);
+      while (true) {
+        await injector.waitForPageLoad();
+        const reviews = await injector.getSinglePageReviews();
+        reviews.length > 0 && this.channel.emit('item-review-collected', { asin, reviews });
+        const hasNextPage = await injector.jumpToNextPageIfExist();
+        if (!hasNextPage) {
+          break;
+        }
       }
     }
     setTimeout(() => browser.tabs.remove(tab.id!), 1000);

@@ -1,5 +1,10 @@
 import { useWebExtensionStorage } from '~/composables/useWebExtensionStorage';
-import type { AmazonDetailItem, AmazonItem, AmazonSearchItem } from './page-worker/types';
+import type {
+  AmazonDetailItem,
+  AmazonItem,
+  AmazonReview,
+  AmazonSearchItem,
+} from './page-worker/types';
 
 export const keywordsList = useWebExtensionStorage<string[]>('keywordsList', ['']);
 
@@ -17,15 +22,32 @@ export const detailItems = useWebExtensionStorage<Map<string, AmazonDetailItem>>
   },
 );
 
+export const reviewItems = useWebExtensionStorage<Map<string, AmazonReview[]>>(
+  'reviewItems',
+  new Map(),
+  {
+    listenToStorageChanges: false,
+  },
+);
+
 export const allItems = computed({
   get() {
     const sItems = unref(searchItems);
+    const sItemSet = new Set(sItems.map((si) => si.asin));
     const dItems = unref(detailItems);
-    return sItems.map<AmazonItem>((si) => {
-      const asin = si.asin;
-      const dItem = dItems.get(asin);
-      return dItems.has(asin) ? { ...si, ...dItem, hasDetail: true } : { ...si, hasDetail: false };
-    });
+    return sItems
+      .map<AmazonItem>((si) => {
+        const asin = si.asin;
+        const dItem = dItems.get(asin);
+        return dItems.has(asin)
+          ? { ...si, ...dItem, hasDetail: true }
+          : { ...si, hasDetail: false };
+      })
+      .concat(
+        Array.from(dItems.values())
+          .filter((di) => !sItemSet.has(di.asin))
+          .map((di) => ({ ...di, link: `https://www.amazon.com/dp/${di.asin}`, hasDetail: true })),
+      );
   },
   set(newValue) {
     const searchItemProps: (keyof AmazonSearchItem)[] = [
@@ -39,12 +61,14 @@ export const allItems = computed({
       'rank',
       'createTime',
     ];
-    searchItems.value = newValue.map((row) => {
-      const entries: [string, unknown][] = Object.entries(row).filter(([key]) =>
-        searchItemProps.includes(key as keyof AmazonSearchItem),
-      );
-      return Object.fromEntries(entries) as AmazonSearchItem;
-    });
+    searchItems.value = newValue
+      .filter((row) => row.keywords)
+      .map((row) => {
+        const entries: [string, unknown][] = Object.entries(row).filter(([key]) =>
+          searchItemProps.includes(key as keyof AmazonSearchItem),
+        );
+        return Object.fromEntries(entries) as AmazonSearchItem;
+      });
     const detailItemsProps: (keyof AmazonDetailItem)[] = [
       'asin',
       'title',
