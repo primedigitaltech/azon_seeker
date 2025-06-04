@@ -9,7 +9,7 @@ defineProps<{
 <template>
   <div class="review-card">
     <h3 style="margin: 0">{{ model.username }}: {{ model.title }}</h3>
-    <n-rate readonly size="small" :default-value="Number(model.rating.split(' ')[0])" />
+    <n-rate readonly size="small" :value="Number(model.rating.split('.')[0])" />
     <div v-for="paragraph in model.content.split('\n')">
       {{ paragraph }}
     </div>

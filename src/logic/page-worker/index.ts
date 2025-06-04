@@ -156,20 +156,20 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     let rawRankingText: string | null = await injector.getRankText();
     if (rawRankingText) {
       const info: Pick<AmazonDetailItem, 'category1' | 'category2'> = {};
-      let statement = /#[0-9,]+\sin\s\S[\s\w',\.&\(\)]+/.exec(rawRankingText)?.[0];
+      let statement = /#[0-9,]+\sin\s\S[\s\w',\.&\(\)\-]+/.exec(rawRankingText)?.[0];
       if (statement) {
-        const name = /(?<=in\s).+(?=\s\(See)/.exec(statement)?.[0] || null;
-        const rank = Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replaceAll(',', '')) || null;
-        if (name && rank) {
+        const name = /(?<=in\s).+/.exec(statement)?.[0].replace(/\s\(See\sTop.+\)/, '');
+        const rank = Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replaceAll(',', ''));
+        if (name && !Number.isNaN(rank)) {
           info['category1'] = { name, rank };
         }
         rawRankingText = rawRankingText.replace(statement, '');
       }
-      statement = /#[0-9,]+\sin\s\S[\s\w',\.&\(\)]+/.exec(rawRankingText)?.[0];
+      statement = /#[0-9,]+\sin\s\S[\s\w',\.&\(\)\-]+/.exec(rawRankingText)?.[0];
       if (statement) {
-        const name = /(?<=in\s).+/.exec(statement)?.[0].replace(/[\s]+$/, '') || null;
-        const rank = Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replaceAll(',', '')) || null;
-        if (name && rank) {
+        const name = /(?<=in\s).+/.exec(statement)?.[0].replace(/[\s]+$/, '');
+        const rank = Number(/(?<=#)[0-9,]+/.exec(statement)?.[0].replaceAll(',', ''));
+        if (name && !Number.isNaN(rank)) {
           info['category2'] = { name, rank };
         }
       }

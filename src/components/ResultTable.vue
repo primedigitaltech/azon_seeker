@@ -5,19 +5,8 @@ import { exportToXLSX, Header, importFromXLSX } from '~/logic/data-io';
 import type { AmazonDetailItem, AmazonItem } from '~/logic/page-worker/types';
 import { allItems } from '~/logic/storage';
 import DetailDescription from './DetailDescription.vue';
-import { useFileDialog } from '@vueuse/core';
 
 const message = useMessage();
-
-const fileDialog = useFileDialog({
-  accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  multiple: false,
-});
-fileDialog.onChange((files) => {
-  const file = files?.item(0);
-  file && handleImport(file);
-  fileDialog.reset();
-});
 
 const page = reactive({ current: 1, size: 10 });
 
@@ -162,12 +151,6 @@ const extraHeaders: Header[] = [
     formatOutputValue: (val?: string[]) => val?.join(';'),
     parseImportValue: (val?: string) => val?.split(';'),
   },
-  {
-    prop: 'topReviews',
-    label: '精选评论',
-    formatOutputValue: (val?: Record<string, any>[]) => JSON.stringify(val),
-    parseImportValue: (val?: string) => val && JSON.parse(val),
-  },
 ];
 
 const filterItemData = (data: AmazonItem[]): AmazonItem[] => {
@@ -248,44 +231,14 @@ const handleClearData = async () => {
             round
             style="min-width: 230px"
           />
-          <n-button-group class="button-group">
-            <n-popconfirm
-              placement="bottom"
-              @positive-click="handleClearData"
-              positive-text="确定"
-              negative-text="取消"
-            >
-              <template #trigger>
-                <n-button type="default" ghost round size="small">
-                  <template #icon>
-                    <ion-trash-outline />
-                  </template>
-                  清空
-                </n-button>
-              </template>
-              确认清空所有数据吗？
-            </n-popconfirm>
-            <n-button type="default" ghost round @click="fileDialog.open()" size="small">
-              <template #icon>
-                <gg-import />
-              </template>
-              导入
-            </n-button>
-            <n-button type="default" ghost round size="small" @click="handleExport">
-              <template #icon>
-                <ion-arrow-up-right-box-outline />
-              </template>
-              导出
-            </n-button>
-            <n-popover trigger="hover" placement="bottom">
-              <template #trigger>
-                <n-button type="default" ghost round size="small">
-                  <template #icon>
-                    <ant-design-filter-outlined />
-                  </template>
-                  过滤
-                </n-button>
-              </template>
+          <control-strip
+            round
+            size="small"
+            @clear="handleClearData"
+            @export="handleExport"
+            @import="handleImport"
+          >
+            <template #filter>
               <div class="filter-section">
                 <div class="filter-title">筛选器</div>
                 <n-form :model="filter" label-placement="left">
@@ -301,11 +254,11 @@ const handleClearData = async () => {
                 </n-form>
                 <div class="filter-footer" @click="onFilterReset"><n-button>重置</n-button></div>
               </div>
-            </n-popover>
-          </n-button-group>
+            </template>
+          </control-strip>
         </n-space>
       </template>
-      <n-empty v-if="allItems.length === 0" size="huge">
+      <n-empty v-if="itemView.records.length === 0" size="huge">
         <template #icon>
           <n-icon size="60">
             <solar-cat-linear />
@@ -356,7 +309,7 @@ const handleClearData = async () => {
 }
 
 .filter-section {
-  width: 250px;
+  min-width: 250px;
 
   .filter-title {
     font-size: 18px;

@@ -1,21 +1,21 @@
 <script lang="ts" setup>
 import type { AmazonDetailItem } from '~/logic/page-worker/types';
 import { reviewItems } from '~/logic/storage';
-import ReviewList from './ReviewList.vue';
+import ReviewPreview from './ReviewPreview.vue';
 
 const props = defineProps<{ model: AmazonDetailItem }>();
 
 const modal = useModal();
 const handleLoadMore = () => {
   modal.create({
-    title: '评论',
+    title: `${props.model.asin}全部评论`,
     preset: 'card',
     style: {
-      width: '85vw',
+      width: '80vw',
       height: '85vh',
     },
     content: () =>
-      h(ReviewList, {
+      h(ReviewPreview, {
         asin: props.model.asin,
       }),
   });

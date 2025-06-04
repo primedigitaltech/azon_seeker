@@ -100,7 +100,17 @@ export default defineConfig(({ command }) => ({
         sidepanel: r('src/sidepanel/index.html'),
         options: r('src/options/index.html'),
       },
-      output: {},
+
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('naive-ui')) return 'vendor-naive-ui';
+            else if (id.includes('vue')) return 'vendor-vue';
+            return 'vendor';
+          }
+          return null;
+        },
+      },
     },
   },
   test: {
