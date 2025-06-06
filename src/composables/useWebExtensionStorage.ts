@@ -47,6 +47,13 @@ const storageInterface: StorageLikeAsync = {
 };
 
 /**
+ * Get page app context
+ */
+function getContext() {
+  return document.location.pathname.split('/')[2] as 'sidepanel' | 'options';
+}
+
+/**
  * https://github.com/vueuse/vueuse/blob/658444bf9f8b96118dbd06eba411bb6639e24e88/packages/core/useStorageAsync/index.ts
  *
  * A custom hook for managing state with Web Extension storage.
@@ -73,8 +80,8 @@ export function useWebExtensionStorage<T>(
   initialValue: MaybeRef<T>,
   options: Pick<
     WebExtensionStorageOptions<T>,
-    'shallow' | 'serializer' | 'listenToStorageChanges' | 'flush' | 'deep' | 'eventFilter'
-  > = {},
+    'shallow' | 'serializer' | 'flush' | 'deep' | 'eventFilter'
+  > & { listenToStorageChanges?: boolean | 'sidepanel' | 'options' } = {},
 ): RemovableRef<T> {
   const {
     shallow = false,
@@ -118,6 +125,12 @@ export function useWebExtensionStorage<T>(
     const listener = async (changes: Record<string, Storage.StorageChange>) => {
       if (!(key in changes)) {
         return;
+      }
+      if (typeof listenToStorageChanges === 'string') {
+        const context = getContext();
+        if (listenToStorageChanges !== context) {
+          return;
+        }
       }
       try {
         pauseWatch();

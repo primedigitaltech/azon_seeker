@@ -5,9 +5,11 @@ import type { App } from 'vue';
  * @param app Vue app
  */
 export function setupApp(app: App) {
+  const context = document.location.pathname.split('/')[2];
+
   // Inject a globally available `$app` object in template
   app.config.globalProperties.$app = {
-    context: '',
+    context,
   };
 
   // Provide access to `app` in script setup with `const app = inject('app')`

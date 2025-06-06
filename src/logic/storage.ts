@@ -18,7 +18,7 @@ export const detailItems = useWebExtensionStorage<Map<string, AmazonDetailItem>>
   'detailItems',
   new Map(),
   {
-    listenToStorageChanges: false,
+    listenToStorageChanges: 'options',
   },
 );
 
@@ -26,7 +26,7 @@ export const reviewItems = useWebExtensionStorage<Map<string, AmazonReview[]>>(
   'reviewItems',
   new Map(),
   {
-    listenToStorageChanges: false,
+    listenToStorageChanges: 'options',
   },
 );
 
