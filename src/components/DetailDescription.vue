@@ -7,8 +7,9 @@ const props = defineProps<{ model: AmazonDetailItem }>();
 
 const modal = useModal();
 const handleLoadMore = () => {
+  const asin = props.model.asin;
   modal.create({
-    title: `${props.model.asin}全部评论`,
+    title: `${asin}评论`,
     preset: 'card',
     style: {
       width: '80vw',
@@ -16,7 +17,7 @@ const handleLoadMore = () => {
     },
     content: () =>
       h(ReviewPreview, {
-        asin: props.model.asin,
+        asin,
       }),
   });
 };
@@ -47,11 +48,9 @@ const handleLoadMore = () => {
         {{ model.category2?.rank || '-' }}
       </n-descriptions-item>
       <n-descriptions-item label="图片链接" :span="4">
-        <div v-for="link in model.imageUrls">
-          {{ link }}
-        </div>
+        <image-link v-for="link in model.imageUrls" :url="link" />
       </n-descriptions-item>
-      <n-descriptions-item
+      <!-- <n-descriptions-item
         v-if="model.topReviews && model.topReviews.length > 0"
         label="精选评论"
         :span="4"
@@ -69,7 +68,7 @@ const handleLoadMore = () => {
             更多评论
           </n-button>
         </div>
-      </n-descriptions-item>
+      </n-descriptions-item> -->
     </n-descriptions>
   </div>
 </template>

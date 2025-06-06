@@ -1,20 +1,23 @@
 <script setup lang="ts">
-import { NButton } from 'naive-ui';
+import { NButton, NSpace } from 'naive-ui';
 import type { TableColumn } from 'naive-ui/es/data-table/src/interface';
 import { exportToXLSX, Header, importFromXLSX } from '~/logic/data-io';
-import type { AmazonDetailItem, AmazonItem } from '~/logic/page-worker/types';
-import { allItems } from '~/logic/storage';
+import type { AmazonDetailItem, AmazonItem, AmazonReview } from '~/logic/page-worker/types';
+import { allItems, reviewItems } from '~/logic/storage';
 import DetailDescription from './DetailDescription.vue';
+import ReviewPreview from './ReviewPreview.vue';
 
 const message = useMessage();
+const modal = useModal();
 
 const page = reactive({ current: 1, size: 10 });
 
-const filter = reactive({
-  keywords: null as string | null,
+const defaultFilter = {
+  keywords: undefined as string | undefined,
   search: '',
   detailOnly: false,
-});
+};
+const filter = reactive(defaultFilter);
 const filterFormItems = computed(() => {
   const records = allItems.value;
   return [
@@ -38,11 +41,7 @@ const filterFormItems = computed(() => {
 });
 
 const onFilterReset = () => {
-  Object.assign(filter, {
-    keywords: null as string | null,
-    search: '',
-    detailOnly: false,
-  });
+  Object.assign(filter, defaultFilter);
 };
 
 const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
@@ -96,23 +95,53 @@ const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
     minWidth: 160,
   },
   {
-    title: '链接',
-    key: 'link',
+    title: '查看',
+    key: 'actions',
+    minWidth: 100,
     render(row) {
-      return h(
-        NButton,
-        {
-          type: 'primary',
-          text: true,
-          size: 'small',
-          onClick: async () => {
-            await browser.tabs.create({
-              active: true,
-              url: row.link,
-            });
+      return h(NSpace, {}, () =>
+        [
+          {
+            text: '评论',
+            disabled: !reviewItems.value.has(row.asin),
+            onClick: () => {
+              const asin = row.asin;
+              modal.create({
+                title: `${asin}评论`,
+                preset: 'card',
+                style: {
+                  width: '80vw',
+                  height: '85vh',
+                },
+                content: () =>
+                  h(ReviewPreview, {
+                    asin,
+                  }),
+              });
+            },
           },
-        },
-        () => '前往',
+          {
+            text: '链接',
+            onClick: () => {
+              browser.tabs.create({
+                active: true,
+                url: row.link,
+              });
+            },
+          },
+        ].map(({ text, onClick, disabled }) =>
+          h(
+            NButton,
+            {
+              type: 'primary',
+              text: true,
+              size: 'small',
+              disabled: disabled,
+              onClick: onClick,
+            },
+            () => text,
+          ),
+        ),
       );
     },
   },
@@ -133,6 +162,7 @@ const itemView = computed<{ records: AmazonItem[]; pageCount: number; origin: Am
 );
 
 const extraHeaders: Header[] = [
+  { prop: 'link', label: '商品链接' },
   {
     prop: 'hasDetail',
     label: '有详情',
@@ -153,6 +183,36 @@ const extraHeaders: Header[] = [
   },
 ];
 
+const reviewHeaders: Header[] = [
+  { prop: 'asin', label: 'ASIN' },
+  { prop: 'username', label: '用户名' },
+  { prop: 'title', label: '标题' },
+  { prop: 'rating', label: '评分' },
+  { prop: 'content', label: '内容' },
+  { prop: 'dateInfo', label: '日期' },
+  {
+    prop: 'imageSrc',
+    label: '图片链接',
+    formatOutputValue: (val?: string[]) => val?.join(';'),
+    parseImportValue: (val?: string) => val?.split(';'),
+  },
+];
+
+const getItemHeaders = () => {
+  return columns
+    .filter((col: Record<string, any>) => col.key !== 'actions')
+    .reduce(
+      (p, v: Record<string, any>) => {
+        if ('key' in v && 'title' in v) {
+          p.push({ label: v.title, prop: v.key });
+        }
+        return p;
+      },
+      [] as { label: string; prop: string }[],
+    )
+    .concat(extraHeaders) as Header[];
+};
+
 const filterItemData = (data: AmazonItem[]): AmazonItem[] => {
   const { search, detailOnly, keywords } = filter;
   if (search.trim() !== '') {
@@ -172,41 +232,52 @@ const filterItemData = (data: AmazonItem[]): AmazonItem[] => {
 };
 
 const handleExport = async () => {
-  const headers: Header[] = columns
-    .reduce(
-      (p, v: Record<string, any>) => {
-        if ('key' in v && 'title' in v) {
-          p.push({ label: v.title, prop: v.key });
-        }
-        return p;
-      },
-      [] as { label: string; prop: string }[],
-    )
-    .concat(extraHeaders);
-  const { origin: data } = itemView.value;
-  exportToXLSX(data, { headers });
+  const itemHeaders = getItemHeaders();
+  const items = toRaw(itemView.value).origin;
+  const asins = new Set(items.map((e) => e.asin));
+  const reviews = toRaw(reviewItems.value)
+    .entries()
+    .filter(([asin]) => asins.has(asin))
+    .reduce<(AmazonReview & { asin: string })[]>((a, [asin, reviews]) => {
+      a.push(...reviews.map((r) => ({ asin, ...r })));
+      return a;
+    }, []);
+
+  const sheet1 = exportToXLSX(items, { headers: itemHeaders, asWorkSheet: true });
+  const wb = sheet1.toWorkbook('items');
+  const sheet2 = exportToXLSX(reviews, { headers: reviewHeaders, asWorkSheet: true });
+  wb.addSheet('reviews', sheet2);
+  wb.exportFile(`Items ${dayjs().format('YYYY-MM-DD')}.xlsx`);
   message.info('导出完成');
 };
 
 const handleImport = async (file: File) => {
-  const headers: Header[] = columns
-    .reduce(
-      (p, v: Record<string, any>) => {
-        if ('key' in v && 'title' in v) {
-          p.push({ label: v.title, prop: v.key });
-        }
-        return p;
-      },
-      [] as { label: string; prop: string }[],
-    )
-    .concat(extraHeaders);
-  const importedData = await importFromXLSX<AmazonItem>(file, { headers });
-  allItems.value = importedData; // 覆盖原数据
-  message.info(`成功导入 ${file.name} 文件 ${importedData.length} 条数据`);
+  const itemHeaders = getItemHeaders();
+  const wb = await importFromXLSX(file, { asWorkBook: true });
+
+  const sheet1 = wb.getSheet(0);
+  const items = sheet1.toJson<AmazonItem>({ headers: itemHeaders });
+  allItems.value = items;
+
+  if (wb.sheetCount > 1) {
+    const sheet2 = wb.getSheet(1);
+    const reviews = sheet2.toJson<AmazonReview & { asin?: string }>({ headers: reviewHeaders });
+    reviewItems.value = reviews.reduce((m, r) => {
+      const asin = r.asin!;
+      delete r.asin;
+      m.has(asin) || m.set(asin, []);
+      const arr = m.get(asin)!;
+      arr.push(r);
+      return m;
+    }, new Map<string, AmazonReview[]>());
+  }
+
+  message.info(`成功导入 ${file.name} 文件`);
 };
 
 const handleClearData = async () => {
   allItems.value = [];
+  reviewItems.value = new Map();
 };
 </script>
 
@@ -229,6 +300,7 @@ const handleClearData = async () => {
             size="small"
             placeholder="输入文本过滤结果"
             round
+            clearable
             style="min-width: 230px"
           />
           <control-strip

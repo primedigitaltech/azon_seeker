@@ -13,9 +13,16 @@ defineProps<{
     <div v-for="paragraph in model.content.split('\n')">
       {{ paragraph }}
     </div>
-    <template v-if="model.imageSrc">
-      <n-code :code="model.imageSrc.join('\n')" />
-    </template>
+    <div class="image-link-container" v-if="model.imageSrc">
+      <image-link v-for="link in model.imageSrc" :url="link" />
+    </div>
     <div style="color: gray; font-size: smaller">{{ model.dateInfo }}</div>
   </div>
 </template>
+
+<style lang="scss" scoped>
+.image-link-container {
+  display: flex;
+  flex-direction: column;
+}
+</style>

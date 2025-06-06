@@ -18,3 +18,26 @@ body,
     hover:opacity-100 hover:text-teal-600;
   font-size: 0.9em;
 }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 #f7fafc;
+}
+
+/* For Webkit browsers */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background: #f7fafc;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #cbd5e1 40%, #a0aec0 100%);
+  border-radius: 8px;
+  border: 2px solid #f7fafc;
+}
+
+*::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 8px;
+}

@@ -95,7 +95,7 @@ export class AmazonSearchPageInjector extends BaseInjector {
         data = await this.run(async () => {
           const items = Array.from(
             document.querySelectorAll<HTMLDivElement>(
-              '.puis-card-container:has(.a-section.a-spacing-small.puis-padding-left-small)',
+              '.puis-card-container',
             ) as unknown as HTMLDivElement[],
           ).filter((e) => e.getClientRects().length > 0);
           const linkObjs = items.reduce<
@@ -124,7 +124,7 @@ export class AmazonSearchPageInjector extends BaseInjector {
       default:
         break;
     }
-    data = data && data.filter((r) => new URL(r.link).pathname.includes('/dp/'));
+    data = data && data.filter((r) => new URL(r.link).pathname.includes('/dp/')); // No advertisement only
     return data;
   }
 
@@ -183,7 +183,7 @@ export class AmazonDetailPageInjector extends BaseInjector {
     return this.run(async () => {
       const title = document.querySelector<HTMLElement>('#title')!.innerText;
       const price = document.querySelector<HTMLElement>(
-        '.a-price:not(.a-text-price) .a-offscreen',
+        '.aok-offscreen, .a-price:not(.a-text-price) .a-offscreen',
       )?.innerText;
       return { title, price };
     });
@@ -313,7 +313,14 @@ export class AmazonDetailPageInjector extends BaseInjector {
           commentNode.querySelectorAll<HTMLImageElement>(
             '.review-image-tile-section img[src] img[src]',
           ),
-        ).map((e) => e.getAttribute('src')!);
+        ).map((e) => {
+          const url = new URL(e.getAttribute('src')!);
+          const paths = url.pathname.split('/');
+          const chunks = paths[paths.length - 1].split('.');
+          paths[paths.length - 1] = `${chunks[0]}.${chunks[chunks.length - 1]}`;
+          url.pathname = paths.join('/');
+          return url.toString();
+        });
         items.push({ id, username, title, rating, dateInfo, content, imageSrc });
       }
       return items;
@@ -387,7 +394,14 @@ export class AmazonReviewPageInjector extends BaseInjector {
         )!.innerText;
         const imageSrc = Array.from(
           commentNode.querySelectorAll<HTMLImageElement>('.review-image-tile-section img[src]'),
-        ).map((e) => e.getAttribute('src')!);
+        ).map((e) => {
+          const url = new URL(e.getAttribute('src')!);
+          const paths = url.pathname.split('/');
+          const chunks = paths[paths.length - 1].split('.');
+          paths[paths.length - 1] = `${chunks[0]}.${chunks[chunks.length - 1]}`;
+          url.pathname = paths.join('/');
+          return url.toString();
+        });
         items.push({ id, username, title, rating, dateInfo, content, imageSrc });
       }
       return items;

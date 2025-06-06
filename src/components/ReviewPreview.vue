@@ -90,7 +90,8 @@ const handleImport = async (file: File) => {
 };
 
 const handleExport = () => {
-  exportToXLSX(allReviews, { headers });
+  const fileName = `${props.asin}Reviews${dayjs().format('YYYY-MM-DD')}.xlsx`;
+  exportToXLSX(allReviews, { headers, fileName });
   message.info('导出完成');
 };
 </script>
