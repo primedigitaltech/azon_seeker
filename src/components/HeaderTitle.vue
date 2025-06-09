@@ -13,7 +13,7 @@ const openOptionsPage = async () => {
             <stash:search-results />
           </n-icon>
         </template>
-        <template #default> 数据 </template>
+        <template #default>数据</template>
       </n-button>
     </div>
     <n-space class="app-title">
@@ -38,7 +38,7 @@ const openOptionsPage = async () => {
   justify-content: flex-start;
 
   .setting-button {
-    margin-right: 20px;
+    margin: 12px 20px 0 0;
     opacity: 0.7;
     &:hover {
       opacity: 1;
@@ -47,6 +47,6 @@ const openOptionsPage = async () => {
 }
 
 .app-title {
-  margin-top: 20px;
+  margin-top: 10px;
 }
 </style>

@@ -6,6 +6,7 @@ import { storage } from 'webextension-polyfill';
 import type { RemovableRef, StorageLikeAsync, UseStorageAsyncOptions } from '@vueuse/core';
 import type { Ref } from 'vue-demi';
 import type { Storage } from 'webextension-polyfill';
+import { usePageContext } from './usePageContext';
 
 export type WebExtensionStorageOptions<T> = UseStorageAsyncOptions<T>;
 
@@ -45,13 +46,6 @@ const storageInterface: StorageLikeAsync = {
     return storedData[key] as string;
   },
 };
-
-/**
- * Get page app context
- */
-function getContext() {
-  return document.location.pathname.split('/')[2] as 'sidepanel' | 'options';
-}
 
 /**
  * https://github.com/vueuse/vueuse/blob/658444bf9f8b96118dbd06eba411bb6639e24e88/packages/core/useStorageAsync/index.ts
@@ -127,7 +121,7 @@ export function useWebExtensionStorage<T>(
         return;
       }
       if (typeof listenToStorageChanges === 'string') {
-        const context = getContext();
+        const { pageContext: context } = usePageContext();
         if (listenToStorageChanges !== context) {
           return;
         }

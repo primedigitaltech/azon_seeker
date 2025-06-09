@@ -51,7 +51,7 @@ onUnmounted(() => {
       trigger="hover"
       placement="right"
       :delay="1000"
-      :duration="1000"
+      :duration="500"
     >
       <template #trigger>
         <span class="link-text">{{ url }}</span>

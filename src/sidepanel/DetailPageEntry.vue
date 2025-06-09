@@ -17,6 +17,15 @@ const timelines = ref<
 
 const { isRunning, startTask } = useLongTask();
 
+const emit = defineEmits<{
+  start: [];
+  stop: [];
+}>();
+
+watch(isRunning, (newVal) => {
+  newVal ? emit('start') : emit('stop');
+});
+
 const asinInputRef = useTemplateRef('asin-input');
 
 //#region Page Worker 初始化Code

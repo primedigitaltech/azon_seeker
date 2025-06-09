@@ -4,6 +4,17 @@ import pageWorker from '~/logic/page-worker';
 import type { AmazonReview } from '~/logic/page-worker/types';
 import { reviewAsinInput, reviewItems } from '~/logic/storage';
 
+const { isRunning, startTask } = useLongTask();
+
+const emit = defineEmits<{
+  start: [];
+  stop: [];
+}>();
+
+watch(isRunning, (newVal) => {
+  newVal ? emit('start') : emit('stop');
+});
+
 const worker = pageWorker.useAmazonPageWorker();
 worker.channel.on('error', ({ message: msg }) => {
   timelines.value.push({
@@ -23,8 +34,6 @@ worker.channel.on('item-review-collected', (ev) => {
   });
   updateReviews(ev);
 });
-
-const { isRunning, startTask } = useLongTask();
 
 const asinInputRef = useTemplateRef('asin-input');
 

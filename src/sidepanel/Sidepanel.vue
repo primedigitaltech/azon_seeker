@@ -22,20 +22,22 @@ const currentComponent = computed(() => {
   const tab = tabs.find((tab) => tab.name === selectedTab.value);
   return tab ? tab.component : null;
 });
-const showHeader = ref(true);
+
+const running = ref(false);
 </script>
 
 <template>
   <div class="side-panel">
-    <div class="header-menu" v-if="showHeader">
+    <div class="header-menu">
       <n-tabs
+        :tab-style="{ cursor: running ? 'not-allowed' : undefined }"
         placement="top"
         :default-value="tabs[0].name"
         type="segment"
         :value="selectedTab"
         @update:value="
           (val) => {
-            if (tabs.findIndex((t) => t.name === val) !== -1) {
+            if (!running && tabs.findIndex((t) => t.name === val) !== -1) {
               selectedTab = val;
             }
           }
@@ -44,15 +46,9 @@ const showHeader = ref(true);
         <n-tab v-for="tab in tabs" :name="tab.name" />
       </n-tabs>
     </div>
-    <div class="display-header-button" @click="showHeader = !showHeader">
-      <n-icon size="18">
-        <ion-chevron-up v-if="showHeader" />
-        <ion-chevron-down v-else />
-      </n-icon>
-    </div>
     <div class="main-content">
       <keep-alive>
-        <Component :is="currentComponent" />
+        <Component :is="currentComponent" @start="running = true" @stop="running = false" />
       </keep-alive>
     </div>
   </div>
@@ -72,26 +68,6 @@ const showHeader = ref(true);
     background-color: #fff;
     box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
     border-bottom: 1px solid #eaeaea;
-  }
-
-  .display-header-button {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #fff;
-    cursor: pointer;
-
-    > .n-icon {
-      opacity: 0.3;
-    }
-
-    &:hover {
-      > .n-icon {
-        opacity: 1;
-      }
-      background-color: #f7f7f7;
-    }
   }
 
   .main-content {

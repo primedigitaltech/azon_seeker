@@ -1,11 +1,12 @@
 import type { App } from 'vue';
+import { usePageContext } from '~/composables/usePageContext';
 
 /**
  * Setup Vue app
  * @param app Vue app
  */
 export function setupApp(app: App) {
-  const context = document.location.pathname.split('/')[2];
+  const { pageContext: context } = usePageContext();
 
   // Inject a globally available `$app` object in template
   app.config.globalProperties.$app = {

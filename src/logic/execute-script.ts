@@ -46,7 +46,7 @@ export async function exec<T, P extends Record<string, unknown>>(
       const ret = injectResults.pop();
       resolve(ret!.result as T);
     } catch (e) {
-      throw new Error(`入脚本运行失败: ${e}`);
+      throw new Error(`脚本运行失败: ${e}`);
     }
   });
 }

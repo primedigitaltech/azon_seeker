@@ -8,6 +8,15 @@ import { useLongTask } from '~/composables/useLongTask';
 const message = useMessage();
 const { isRunning, startTask } = useLongTask();
 
+const emit = defineEmits<{
+  start: [];
+  stop: [];
+}>();
+
+watch(isRunning, (newVal) => {
+  newVal ? emit('start') : emit('stop');
+});
+
 //#region Initial Page Worker
 const worker = pageWorker.useAmazonPageWorker();
 worker.channel.on('error', ({ message: msg }) => {
