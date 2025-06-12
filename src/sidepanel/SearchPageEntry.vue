@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { keywordsList } from '~/logic/storage';
-import pageWorker from '~/logic/page-worker';
+import { amazon as pageWorker } from '~/logic/page-worker';
 import { NButton } from 'naive-ui';
 import { searchItems } from '~/logic/storage';
 import { useLongTask } from '~/composables/useLongTask';

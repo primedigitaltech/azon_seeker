@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useLongTask } from '~/composables/useLongTask';
-import pageWorker from '~/logic/page-worker';
+import { amazon as pageWorker } from '~/logic/page-worker';
 import { AmazonDetailItem } from '~/logic/page-worker/types';
 import { detailAsinInput, detailItems } from '~/logic/storage';
 

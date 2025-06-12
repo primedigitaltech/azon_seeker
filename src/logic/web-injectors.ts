@@ -1,6 +1,6 @@
 import { exec } from './execute-script';
 import type { Tabs } from 'webextension-polyfill';
-import type { AmazonReview, AmazonSearchItem } from './page-worker/types';
+import type { AmazonReview, AmazonSearchItem, HomedepotDetailItem } from './page-worker/types';
 
 class BaseInjector {
   readonly _tab: Tabs.Tab;
@@ -235,40 +235,24 @@ export class AmazonDetailPageInjector extends BaseInjector {
 
   public async getImageUrls() {
     return this.run(async () => {
-      let urls = Array.from(document.querySelectorAll<HTMLImageElement>('.imageThumbnail img')).map(
-        (e) => e.src,
-      );
-      //#region process more images https://github.com/primedigitaltech/azon_seeker/issues/4
       const overlay = document.querySelector<HTMLDivElement>('.overlayRestOfImages');
       if (overlay) {
         if (document.querySelector<HTMLDivElement>('#ivThumbs')!.getClientRects().length === 0) {
           overlay.click();
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
-        urls = Array.from(
-          document.querySelectorAll<HTMLDivElement>('#ivThumbs .ivThumbImage[style]'),
-        ).map((e) => e.style.background);
-        urls = urls.map((s) => {
-          const [url] = /(?<=url\(").+(?=")/.exec(s)!;
-          return url;
-        });
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        document
-          .querySelector<HTMLButtonElement>(".a-popover button[data-action='a-popover-close']")
-          ?.click();
       }
-      //#endregion
-      //#region post-process image urls
-      urls = urls.map((rawUrl) => {
-        const imgUrl = new URL(rawUrl);
-        const paths = imgUrl.pathname.split('/');
-        const chunks = paths[paths.length - 1].split('.');
-        const [name, ext] = [chunks[0], chunks[chunks.length - 1]];
-        paths[paths.length - 1] = `${name}.${ext}`;
-        imgUrl.pathname = paths.join('/');
-        return imgUrl.toString();
-      });
-      //#endregion
+      const script = document.evaluate(
+        `//script[starts-with(text(), "\nP.when(\'A\').register")]`,
+        document,
+        null,
+        XPathResult.STRING_TYPE,
+      ).stringValue;
+      const urls = [
+        ...script.matchAll(
+          /(?<="hiRes":")https:\/\/m.media-amazon.com\/images\/I\/[\w\d\.\-+]+(?=")/g,
+        ),
+      ].map((e) => e[0]);
       return urls;
     });
   }
@@ -372,8 +356,6 @@ export class AmazonReviewPageInjector extends BaseInjector {
       );
       const items: AmazonReview[] = [];
       for (let i = 0; i < xResult.snapshotLength; i++) {
-        console.log('handling', i);
-
         const commentNode = xResult.snapshotItem(i) as HTMLDivElement;
         if (!commentNode) {
           continue;
@@ -457,5 +439,66 @@ export class AmazonReviewPageInjector extends BaseInjector {
       },
       { star },
     );
+  }
+}
+
+export class HomedepotDetailPageInjector extends BaseInjector {
+  public waitForPageLoad() {
+    return this.run(async () => {
+      while (true) {
+        document
+          .querySelector<HTMLElement>(
+            `#product-section-overview div[role='button'][aria-expanded='false']`,
+          )
+          ?.click();
+        const reviewPlaceholderEl = document.querySelector(
+          `[data-component^="ratings-and-reviews"] [class^="placeholder"]`,
+        );
+        reviewPlaceholderEl?.scrollIntoView({ behavior: 'smooth' });
+        if (document.readyState === 'complete' && !reviewPlaceholderEl) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          document
+            .querySelector(`#product-section-rr`)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          break;
+        }
+      }
+    });
+  }
+
+  public getInfo() {
+    return this.run(async () => {
+      const link = document.location.toString();
+      const brandName = document.querySelector<HTMLDivElement>(
+        `[data-component^="product-details:ProductDetailsBrandCollection"]`,
+      )!.innerText;
+      const title = document.querySelector<HTMLDivElement>(
+        `[data-component^="product-details:ProductDetailsTitle"]`,
+      )!.innerText;
+      const price = document.querySelector<HTMLDivElement>(`#standard-price`)!.innerText;
+      const rate = /\d\.\d/.exec(
+        document.querySelector<HTMLDivElement>(`[data-component^="ratings-and-reviews"] .sui-mr-1`)!
+          .innerText,
+      )![0];
+      const reviewCount = Number(
+        /[\d]+/.exec(
+          document.querySelector<HTMLDivElement>(
+            `[data-component^="ratings-and-reviews"] button > span:last-child`,
+          )!.innerText,
+        )![0],
+      );
+      const mainImageUrl = document.querySelector<HTMLImageElement>(
+        `.mediagallery__mainimage img`,
+      )!.src;
+      return {
+        link,
+        brandName,
+        title,
+        price,
+        rate,
+        reviewCount,
+        mainImageUrl,
+      } as Omit<HomedepotDetailItem, 'OSMID'>;
+    });
   }
 }
