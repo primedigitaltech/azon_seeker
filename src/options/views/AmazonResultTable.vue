@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { NButton, NSpace } from 'naive-ui';
 import type { TableColumn } from 'naive-ui/es/data-table/src/interface';
-import { exportToXLSX, Header, importFromXLSX } from '~/logic/data-io';
+import { createWorkbook, Header, importFromXLSX } from '~/logic/data-io';
 import type { AmazonDetailItem, AmazonItem, AmazonReview } from '~/logic/page-worker/types';
 import { allItems, reviewItems } from '~/logic/storage';
-import DetailDescription from './DetailDescription.vue';
-import ReviewPreview from './ReviewPreview.vue';
+import DetailDescription from '~/components/DetailDescription.vue';
+import ReviewPreview from '~/components/ReviewPreview.vue';
 
 const message = useMessage();
 const modal = useModal();
@@ -243,11 +243,12 @@ const handleExport = async () => {
       return a;
     }, []);
 
-  const sheet1 = exportToXLSX(items, { headers: itemHeaders, asWorkSheet: true });
-  const wb = sheet1.toWorkbook('items');
-  const sheet2 = exportToXLSX(reviews, { headers: reviewHeaders, asWorkSheet: true });
-  wb.addSheet('reviews', sheet2);
-  wb.exportFile(`Items ${dayjs().format('YYYY-MM-DD')}.xlsx`);
+  const wb = createWorkbook();
+  const sheet1 = wb.addSheet('items');
+  await sheet1.readJson(items, { headers: itemHeaders });
+  const sheet2 = wb.addSheet('reviews');
+  await sheet2.readJson(reviews, { headers: reviewHeaders });
+  await wb.exportFile(`Items ${dayjs().format('YYYY-MM-DD')}.xlsx`);
   message.info('导出完成');
 };
 
@@ -255,13 +256,15 @@ const handleImport = async (file: File) => {
   const itemHeaders = getItemHeaders();
   const wb = await importFromXLSX(file, { asWorkBook: true });
 
-  const sheet1 = wb.getSheet(0);
-  const items = sheet1.toJson<AmazonItem>({ headers: itemHeaders });
+  const sheet1 = wb.getSheet(0)!;
+  const items = await sheet1.toJson<AmazonItem>({ headers: itemHeaders });
   allItems.value = items;
 
   if (wb.sheetCount > 1) {
-    const sheet2 = wb.getSheet(1);
-    const reviews = sheet2.toJson<AmazonReview & { asin?: string }>({ headers: reviewHeaders });
+    const sheet2 = wb.getSheet(1)!;
+    const reviews = await sheet2.toJson<AmazonReview & { asin?: string }>({
+      headers: reviewHeaders,
+    });
     reviewItems.value = reviews.reduce((m, r) => {
       const asin = r.asin!;
       delete r.asin;

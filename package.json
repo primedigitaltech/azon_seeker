@@ -43,6 +43,7 @@
     "dayjs": "^1.11.13",
     "emittery": "^1.1.0",
     "esno": "^4.8.0",
+    "exceljs": "^4.4.0",
     "fs-extra": "^11.2.0",
     "husky": "^9.1.7",
     "jsdom": "^26.0.0",
@@ -61,14 +62,12 @@
     "vitest": "^3.1.1",
     "vue": "^3.5.13",
     "vue-demi": "^0.14.10",
+    "vue-router": "^4.5.1",
     "web-ext": "^8.5.0",
     "webext-bridge": "^6.0.1",
     "webextension-polyfill": "^0.12.0"
   },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"
-  },
-  "dependencies": {
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }

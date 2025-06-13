@@ -6,3 +6,7 @@ declare module 'webext-bridge' {
     // see https://github.com/antfu/webext-bridge#type-safe-protocols
   }
 }
+
+declare global {
+  type AppContext = 'options' | 'sidepanel';
+}

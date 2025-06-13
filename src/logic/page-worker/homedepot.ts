@@ -1,7 +1,6 @@
 import Emittery from 'emittery';
 import { HomedepotEvents, HomedepotWorker } from './types';
 import { Tabs } from 'webextension-polyfill';
-import { isForbiddenUrl } from '~/env';
 import { withErrorHandling } from '../error-handler';
 import { HomedepotDetailPageInjector } from '../web-injectors';
 
@@ -19,13 +18,6 @@ class HomedepotWorkerImpl implements HomedepotWorker {
 
   private readonly _controlChannel = new Emittery<{ interrupt: undefined }>();
 
-  private async getCurrentTab(): Promise<Tabs.Tab> {
-    const tab = await browser.tabs
-      .query({ active: true, currentWindow: true })
-      .then((tabs) => tabs[0]);
-    return tab;
-  }
-
   private async createNewTab(url?: string): Promise<Tabs.Tab> {
     const tab = await browser.tabs.create({ url, active: true });
     return tab;
@@ -34,16 +26,14 @@ class HomedepotWorkerImpl implements HomedepotWorker {
   @withErrorHandling
   private async wanderingDetailPage(OSMID: string) {
     const url = `https://www.homedepot.com/p/${OSMID}`;
-    let tab = await this.getCurrentTab();
-    if (!tab.url || isForbiddenUrl(tab.url)) {
-      tab = await this.createNewTab(url);
-    } else {
-      await browser.tabs.update(tab.id!, { url });
-    }
+    const tab = await this.createNewTab(url);
     const injector = new HomedepotDetailPageInjector(tab);
     await injector.waitForPageLoad();
     const info = await injector.getInfo();
     this.channel.emit('detail-item-collected', { item: { OSMID, ...info } });
+    setTimeout(() => {
+      browser.tabs.remove(tab.id!);
+    }, 1000);
   }
 
   async runDetailPageTask(

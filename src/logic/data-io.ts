@@ -1,97 +1,144 @@
-import { utils, read, writeFileXLSX, WorkSheet, WorkBook } from 'xlsx';
+import excel from 'exceljs';
 
 class Worksheet {
-  readonly _raw: WorkSheet;
+  readonly _ws: excel.Worksheet;
+  readonly workbook: Workbook;
 
-  constructor(ws: WorkSheet) {
-    this._raw = ws;
+  constructor(ws: excel.Worksheet, wb: Workbook) {
+    this._ws = ws;
+    this.workbook = wb;
   }
 
-  static fromJson(data: Record<string, unknown>[], options: { headers?: Header[] } = {}) {
+  async readJson(data: Record<string, unknown>[], options: { headers?: Header[] } = {}) {
     const {
       headers = data.length > 0
         ? Object.keys(data[0]).map((k) => ({ label: k, prop: k }) as Header)
         : [],
     } = options;
 
-    const rows = data.map((item) => {
-      const row: Record<string, unknown> = {};
-      headers.forEach((header) => {
-        const value = getAttribute(item, header.prop);
-        if (header.formatOutputValue) {
-          row[header.label] = header.formatOutputValue(value);
-        } else if (['string', 'number', 'bigint', 'boolean'].includes(typeof value)) {
-          row[header.label] = value;
-        } else {
-          row[header.label] = JSON.stringify(value);
+    const rows = await Promise.all(
+      data.map(async (item, i) => {
+        const record: Record<string, unknown> = {};
+        const cols = headers.filter((h) => h.ignore?.out !== true);
+        for (let j = 0; j < cols.length; j++) {
+          const header = cols[j];
+          if (header.ignore?.out) {
+            continue;
+          }
+          const value = getAttribute(item, header.prop);
+          if (header.formatOutputValue) {
+            record[header.label] = await header.formatOutputValue(value, i);
+          } else if (['string', 'number', 'bigint', 'boolean'].includes(typeof value)) {
+            record[header.label] = value;
+          } else {
+            record[header.label] = JSON.stringify(value);
+          }
         }
-      });
-      return row;
+        return record;
+      }),
+    );
+
+    this._ws.columns = headers.map((e) => {
+      return { header: e.label, key: e.label };
     });
 
-    const ws = utils.json_to_sheet(rows, {
-      header: headers.map((h) => h.label),
-    });
-    ws['!autofilter'] = {
-      ref: utils.encode_range({ c: 0, r: 0 }, { c: headers.length - 1, r: rows.length }),
-    }; // Use Auto Filter： https://github.com/SheetJS/sheetjs/issues/472#issuecomment-292852308
-    return new Worksheet(ws);
+    this._ws.addRows(rows);
+    this._ws.autoFilter = {
+      from: {
+        row: 1,
+        column: 1,
+      },
+      to: {
+        row: rows.length + 1,
+        column: headers.length,
+      },
+    };
   }
 
-  toJson<T>(options: { headers?: Header[] } = {}) {
+  async toJson<T>(options: { headers?: Header[] } = {}) {
     const { headers } = options;
 
-    let jsonData = utils.sheet_to_json<Record<string, unknown>>(this._raw);
-    if (headers) {
-      jsonData = jsonData.map((item) => {
-        const mappedItem: Record<string, unknown> = {};
-        headers.forEach((header) => {
-          const value = header.parseImportValue
-            ? header.parseImportValue(item[header.label])
-            : item[header.label];
-          setAttribute(mappedItem, header.prop, value);
-        });
-        return mappedItem;
+    let jsonData: Record<string, unknown>[] = [];
+    this._ws.eachRow((row) => {
+      const rowData: Record<string, unknown> = {};
+      row.eachCell((cell, colNumber) => {
+        const header = this._ws.getRow(1).getCell(colNumber).value?.toString()!;
+        rowData[header] = cell.value;
       });
+      jsonData.push(rowData);
+    });
+    jsonData = jsonData.slice(1); // Remove Headers
+    if (headers) {
+      jsonData = await Promise.all(
+        jsonData.map(async (item, i) => {
+          const mappedItem: Record<string, unknown> = {};
+          for (const header of headers) {
+            if (header.ignore?.in) {
+              continue;
+            }
+            const value = header.parseImportValue
+              ? await header.parseImportValue(item[header.label], i)
+              : item[header.label];
+            setAttribute(mappedItem, header.prop, value);
+          }
+          return mappedItem;
+        }),
+      );
     }
     return jsonData as T[];
   }
 
-  toWorkbook(sheetName?: string) {
-    const wb = new Workbook(utils.book_new());
-    wb.addSheet(sheetName || 'Sheet1', this);
-    return wb;
+  async addImage(img: { data: ArrayBuffer; ext: 'jpeg' | 'png' | 'gif' }) {
+    const imgId = this.workbook._wb.addImage({
+      buffer: img.data,
+      extension: img.ext,
+    });
+    return imgId;
   }
 }
 
 class Workbook {
-  readonly _raw: WorkBook;
+  _wb: excel.Workbook;
 
-  constructor(wb: WorkBook) {
-    this._raw = wb;
+  constructor(wb: excel.Workbook) {
+    this._wb = wb;
   }
 
   get sheetCount() {
-    return this._raw.SheetNames.length;
+    return this._wb.worksheets.length;
   }
 
-  static fromArrayBuffer(bf: ArrayBuffer) {
-    const data = new Uint8Array(bf);
-    const wb = read(data, { type: 'array' });
-    return new Workbook(wb);
+  static createWorkbook() {
+    return new Workbook(new excel.Workbook());
   }
 
-  getSheet(index: number) {
-    const sheetName = this._raw.SheetNames[index];
-    return new Worksheet(this._raw.Sheets[sheetName]);
+  async loadArrayBuffer(bf: ArrayBuffer) {
+    this._wb = await this._wb.xlsx.load(bf);
   }
 
-  addSheet(name: string, sheet: Worksheet) {
-    utils.book_append_sheet(this._raw, sheet._raw, name);
+  getSheet(index: number): Worksheet | undefined {
+    const ws = this._wb.getWorksheet(index + 1); // Align the index
+    return ws ? new Worksheet(ws, this) : undefined;
   }
 
-  exportFile(fileName: string) {
-    writeFileXLSX(this._raw, fileName, { bookType: 'xlsx', type: 'binary', compression: true });
+  addSheet(name?: string) {
+    const ws = this._wb.addWorksheet(name);
+    return new Worksheet(ws, this);
+  }
+
+  async exportFile(fileName: string) {
+    const bf = await this._wb.xlsx.writeBuffer();
+    const blob = new Blob([bf], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 }
 
@@ -131,12 +178,17 @@ function setAttribute(obj: Record<string, unknown>, path: string, value: unknown
 export type Header = {
   label: string;
   prop: string;
-  parseImportValue?: (val: any) => any;
-  formatOutputValue?: (val: any) => any;
+  parseImportValue?: (val: any, index: number) => any;
+  formatOutputValue?: (val: any, index: number) => any;
+  ignore?: {
+    in?: boolean;
+    out?: boolean;
+  };
 };
 
 export type ExportBaseOptions = {
   fileName?: string;
+  sheetName?: string;
   headers?: Header[];
 };
 
@@ -149,31 +201,20 @@ export type ImportBaseOptions = {
  * @param data 数据数组
  * @param options 导出选项
  */
-export function exportToXLSX(
+export async function exportToXLSX(
   data: Record<string, unknown>[],
-  options?: ExportBaseOptions & { asWorkSheet?: false },
-): void;
-export function exportToXLSX(
-  data: Record<string, unknown>[],
-  options: Omit<ExportBaseOptions, 'fileName'> & { asWorkSheet: true },
-): Worksheet;
-export function exportToXLSX(
-  data: Record<string, unknown>[],
-  options: ExportBaseOptions & { asWorkSheet?: boolean } = {},
+  options: ExportBaseOptions = {},
 ) {
   const {
     headers,
+    sheetName,
     fileName = `export_${new Date().toISOString().slice(0, 10)}.xlsx`,
-    asWorkSheet,
   } = options;
 
-  const worksheet = Worksheet.fromJson(data, { headers: headers });
-
-  if (asWorkSheet) {
-    return worksheet;
-  }
-  const workbook = worksheet.toWorkbook();
-  workbook.exportFile(fileName);
+  const workbook = Workbook.createWorkbook();
+  const worksheet = workbook.addSheet(sheetName);
+  await worksheet.readJson(data, { headers });
+  await workbook.exportFile(fileName);
 }
 
 /**
@@ -198,13 +239,15 @@ export async function importFromXLSX<T extends Record<string, unknown>>(
 
     reader.onload = (event) => {
       try {
-        const wb = Workbook.fromArrayBuffer(event.target?.result as ArrayBuffer);
-        if (asWorkBook) {
-          resolve(wb);
-        }
-        const ws = wb.getSheet(0); // 默认读取第一个工作表
-        const jsonData = ws.toJson<T>({ headers });
-        resolve(jsonData);
+        const wb = Workbook.createWorkbook();
+        wb.loadArrayBuffer(event.target?.result as ArrayBuffer).then(() => {
+          if (asWorkBook) {
+            resolve(wb);
+          } else {
+            const ws = wb.getSheet(0)!; // 默认读取第一个工作表
+            resolve(ws.toJson<T>({ headers }));
+          }
+        });
       } catch (error) {
         reject(error);
       }
@@ -214,4 +257,11 @@ export async function importFromXLSX<T extends Record<string, unknown>>(
     };
     reader.readAsArrayBuffer(file);
   });
+}
+
+/**
+ * 创建Excel文件对象
+ */
+export function createWorkbook() {
+  return Workbook.createWorkbook();
 }

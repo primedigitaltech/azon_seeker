@@ -5,15 +5,18 @@ import type { AmazonReview, AmazonSearchItem, HomedepotDetailItem } from './page
 class BaseInjector {
   readonly _tab: Tabs.Tab;
 
-  constructor(tab: Tabs.Tab) {
+  readonly _timeout: number;
+
+  constructor(tab: Tabs.Tab, timeout: number = 30000) {
     this._tab = tab;
+    this._timeout = timeout;
   }
 
   run<T, P extends Record<string, unknown>>(
     func: (payload: P) => Promise<T>,
     payload?: P,
   ): Promise<T> {
-    return exec(this._tab.id!, func, payload as P);
+    return exec(this._tab.id!, func, payload as P, { timeout: this._timeout });
   }
 }
 
@@ -443,23 +446,34 @@ export class AmazonReviewPageInjector extends BaseInjector {
 }
 
 export class HomedepotDetailPageInjector extends BaseInjector {
+  constructor(tab: Tabs.Tab) {
+    super(tab, 60000);
+  }
+
   public waitForPageLoad() {
     return this.run(async () => {
+      let timeout = false;
+      setTimeout(() => (timeout = true), 15000);
+      const isLoaded = () => {
+        const reviewPlaceholderEl = document.querySelector(
+          `#product-section-rr div[role='button'][aria-expanded='true']`,
+        );
+        return reviewPlaceholderEl && (document.readyState == 'complete' || timeout);
+      };
       while (true) {
+        await new Promise((resolve) => setTimeout(resolve, 500 + ~~(Math.random() * 500)));
         document
           .querySelector<HTMLElement>(
-            `#product-section-overview div[role='button'][aria-expanded='false']`,
+            `#product-section-rr div[role='button'][aria-expanded='false'], #product-section-overview div[role='button'][aria-expanded='false']`,
           )
           ?.click();
-        const reviewPlaceholderEl = document.querySelector(
-          `[data-component^="ratings-and-reviews"] [class^="placeholder"]`,
-        );
-        reviewPlaceholderEl?.scrollIntoView({ behavior: 'smooth' });
-        if (document.readyState === 'complete' && !reviewPlaceholderEl) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          document
-            .querySelector(`#product-section-rr`)
-            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const { scrollHeight, scrollTop } = document.documentElement;
+        scrollHeight - scrollTop > 100
+          ? window.scrollBy({ top: 100, behavior: 'smooth' })
+          : document
+              .querySelector('[data-component^="product-details:ProductDetailsTitle"]')
+              ?.scrollIntoView({ behavior: 'smooth' });
+        if (isLoaded()) {
           break;
         }
       }
@@ -471,22 +485,26 @@ export class HomedepotDetailPageInjector extends BaseInjector {
       const link = document.location.toString();
       const brandName = document.querySelector<HTMLDivElement>(
         `[data-component^="product-details:ProductDetailsBrandCollection"]`,
-      )!.innerText;
+      )?.innerText;
       const title = document.querySelector<HTMLDivElement>(
         `[data-component^="product-details:ProductDetailsTitle"]`,
       )!.innerText;
-      const price = document.querySelector<HTMLDivElement>(`#standard-price`)!.innerText;
-      const rate = /\d\.\d/.exec(
-        document.querySelector<HTMLDivElement>(`[data-component^="ratings-and-reviews"] .sui-mr-1`)!
-          .innerText,
-      )![0];
-      const reviewCount = Number(
-        /[\d]+/.exec(
-          document.querySelector<HTMLDivElement>(
-            `[data-component^="ratings-and-reviews"] button > span:last-child`,
-          )!.innerText,
-        )![0],
+      const price = document
+        .querySelector<HTMLDivElement>(`#standard-price`)!
+        .innerText.replaceAll('\n', '');
+      const rateEl = document.querySelector<HTMLDivElement>(
+        `[data-component^="ratings-and-reviews"] .sui-mr-1`,
       );
+      const rate = rateEl ? /\d(\.\d)?/.exec(rateEl.innerText)![0] : undefined;
+      const reviewCount = rateEl
+        ? Number(
+            /\d+/.exec(
+              document.querySelector<HTMLDivElement>(
+                `[data-component^="ratings-and-reviews"] [name="simple-rating"] + span`,
+              )!.innerText,
+            )![0],
+          )
+        : undefined;
       const mainImageUrl = document.querySelector<HTMLImageElement>(
         `.mediagallery__mainimage img`,
       )!.src;

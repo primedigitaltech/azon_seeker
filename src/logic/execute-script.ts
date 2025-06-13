@@ -21,20 +21,29 @@
  * console.log(result); // Outputs: 42
  * ```
  */
-export async function exec<T>(tabId: number, func: () => Promise<T>): Promise<T>;
+type ExecOptions = {
+  timeout?: number;
+};
+
+export async function exec<T>(
+  tabId: number,
+  func: () => Promise<T>,
+  payload?: undefined,
+  options?: ExecOptions,
+): Promise<T>;
 export async function exec<T, P extends Record<string, unknown>>(
   tabId: number,
   func: (payload: P) => Promise<T>,
   payload: P,
+  options?: ExecOptions,
 ): Promise<T>;
 export async function exec<T, P extends Record<string, unknown>>(
   tabId: number,
   func: (payload?: P) => Promise<T>,
   payload?: P,
+  options: ExecOptions = {},
 ): Promise<T> {
-  const { timeout } = {
-    timeout: 30000,
-  };
+  const { timeout = 30000 } = options;
   return new Promise<T>(async (resolve, reject) => {
     setTimeout(() => reject('脚本运行超时'), timeout);
     try {

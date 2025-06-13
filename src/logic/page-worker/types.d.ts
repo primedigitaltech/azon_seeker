@@ -42,12 +42,12 @@ type AmazonItem = Pick<AmazonSearchItem, 'asin'> &
 type HomedepotDetailItem = {
   OSMID: string;
   link: string;
-  brandName: string;
+  brandName?: string;
   title: string;
   price: string;
-  rate: string;
+  rate?: string;
   innerText: string;
-  reviewCount: number;
+  reviewCount?: number;
   mainImageUrl: string;
 };
 

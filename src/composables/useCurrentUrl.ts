@@ -1,9 +1,9 @@
 export function useCurrentUrl() {
-  const currentUrl = ref('');
+  const currentUrl = ref<string | undefined>(undefined);
 
   const updateUrl = async () => {
     const tab = await browser.tabs.query({ active: true, currentWindow: true }).then((ts) => ts[0]);
-    currentUrl.value = tab.url || '';
+    currentUrl.value = tab.url || undefined;
   };
 
   onMounted(() => {
@@ -17,5 +17,5 @@ export function useCurrentUrl() {
     browser.tabs.onHighlighted.removeListener(updateUrl);
   });
 
-  return { currentUrl };
+  return currentUrl;
 }

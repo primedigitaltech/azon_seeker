@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import DetailPageEntry from './DetailPageEntry.vue';
-import SearchPageEntry from './SearchPageEntry.vue';
-import ReviewPageEntry from './ReviewPageEntry.vue';
+import DetailPageEntry from './AmazonEntries/DetailPageEntry.vue';
+import SearchPageEntry from './AmazonEntries/SearchPageEntry.vue';
+import ReviewPageEntry from './AmazonEntries/ReviewPageEntry.vue';
 
 const tabs = [
   {
@@ -17,6 +17,7 @@ const tabs = [
     component: ReviewPageEntry,
   },
 ];
+
 const selectedTab = ref(tabs[0].name);
 const currentComponent = computed(() => {
   const tab = tabs.find((tab) => tab.name === selectedTab.value);

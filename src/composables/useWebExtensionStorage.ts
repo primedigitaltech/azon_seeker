@@ -6,7 +6,7 @@ import { storage } from 'webextension-polyfill';
 import type { RemovableRef, StorageLikeAsync, UseStorageAsyncOptions } from '@vueuse/core';
 import type { Ref } from 'vue-demi';
 import type { Storage } from 'webextension-polyfill';
-import { usePageContext } from './usePageContext';
+import { useAppContext } from './useAppContext';
 
 export type WebExtensionStorageOptions<T> = UseStorageAsyncOptions<T>;
 
@@ -121,7 +121,7 @@ export function useWebExtensionStorage<T>(
         return;
       }
       if (typeof listenToStorageChanges === 'string') {
-        const { pageContext: context } = usePageContext();
+        const { appContext: context } = useAppContext();
         if (listenToStorageChanges !== context) {
           return;
         }
