@@ -2,7 +2,7 @@ import Emittery from 'emittery';
 import { HomedepotEvents, HomedepotWorker } from './types';
 import { Tabs } from 'webextension-polyfill';
 import { withErrorHandling } from '../error-handler';
-import { HomedepotDetailPageInjector } from '../web-injectors';
+import { HomedepotDetailPageInjector } from '~/logic/web-injectors/homedepot';
 
 class HomedepotWorkerImpl implements HomedepotWorker {
   private static _instance: HomedepotWorker | null = null;

@@ -1,17 +1,19 @@
 export function useLongTask() {
   const isRunning = ref(false);
 
-  const startTask = async (task: () => Promise<void>) => {
-    isRunning.value = true;
-
-    try {
-      await task();
-      isRunning.value = false;
-    } catch (error) {
-      isRunning.value = false;
-      console.error('Task failed:', error);
-      throw error;
+  const startTask = async <T = undefined>(task: () => Promise<T>) => {
+    if (isRunning.value) {
+      throw Error('Task is still running.');
     }
+    isRunning.value = true;
+    let result = undefined;
+    try {
+      result = await task();
+    } catch (error) {
+      console.error('Task failed:', error);
+    }
+    isRunning.value = false;
+    return result as T;
   };
 
   return {

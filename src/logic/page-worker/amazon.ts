@@ -6,7 +6,7 @@ import {
   AmazonDetailPageInjector,
   AmazonReviewPageInjector,
   AmazonSearchPageInjector,
-} from '../web-injectors';
+} from '~/logic/web-injectors/amazon';
 import { isForbiddenUrl } from '~/env';
 
 /**

@@ -15,12 +15,14 @@ const theme: GlobalThemeOverrides = {
 <template>
   <!-- Naive UI Wrapper-->
   <n-config-provider :theme-overrides="theme">
-    <n-message-provider>
-      <n-dialog-provider>
-        <n-modal-provider>
-          <options />
-        </n-modal-provider>
-      </n-dialog-provider>
-    </n-message-provider>
+    <n-loading-bar-provider>
+      <n-message-provider>
+        <n-dialog-provider>
+          <n-modal-provider>
+            <options />
+          </n-modal-provider>
+        </n-dialog-provider>
+      </n-message-provider>
+    </n-loading-bar-provider>
   </n-config-provider>
 </template>

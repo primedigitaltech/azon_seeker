@@ -29,7 +29,7 @@ const running = ref(false);
 
 <template>
   <div class="side-panel">
-    <div class="header-menu">
+    <header class="header-menu">
       <n-tabs
         :tab-style="{ cursor: running ? 'not-allowed' : undefined }"
         placement="top"
@@ -46,12 +46,12 @@ const running = ref(false);
       >
         <n-tab v-for="tab in tabs" :name="tab.name" />
       </n-tabs>
-    </div>
-    <div class="main-content">
+    </header>
+    <main class="main-content">
       <keep-alive>
         <Component :is="currentComponent" @start="running = true" @stop="running = false" />
       </keep-alive>
-    </div>
+    </main>
   </div>
 </template>
 

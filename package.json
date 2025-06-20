@@ -35,6 +35,7 @@
     "@types/node": "^22.10.5",
     "@types/webextension-polyfill": "^0.12.1",
     "@vitejs/plugin-vue": "^5.2.1",
+    "@vitejs/plugin-vue-jsx": "^4.2.0",
     "@vue/test-utils": "^2.4.6",
     "@vueuse/core": "^12.3.0",
     "chokidar": "^4.0.3",

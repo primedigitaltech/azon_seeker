@@ -48,7 +48,18 @@ const emit = defineEmits<{
         </template>
         导入
       </n-button>
-      <n-button type="default" ghost :round="round" :size="size" @click="emit('export')">
+      <n-popover v-if="$slots.exporter" trigger="hover" placement="bottom">
+        <template #trigger>
+          <n-button type="default" ghost :round="round" :size="size" @click="emit('export')">
+            <template #icon>
+              <ion-arrow-up-right-box-outline />
+            </template>
+            导出
+          </n-button>
+        </template>
+        <slot name="exporter" />
+      </n-popover>
+      <n-button v-else type="default" ghost :round="round" :size="size" @click="emit('export')">
         <template #icon>
           <ion-arrow-up-right-box-outline />
         </template>

@@ -1,24 +1,5 @@
-import { exec } from './execute-script';
-import type { Tabs } from 'webextension-polyfill';
-import type { AmazonReview, AmazonSearchItem, HomedepotDetailItem } from './page-worker/types';
-
-class BaseInjector {
-  readonly _tab: Tabs.Tab;
-
-  readonly _timeout: number;
-
-  constructor(tab: Tabs.Tab, timeout: number = 30000) {
-    this._tab = tab;
-    this._timeout = timeout;
-  }
-
-  run<T, P extends Record<string, unknown>>(
-    func: (payload: P) => Promise<T>,
-    payload?: P,
-  ): Promise<T> {
-    return exec(this._tab.id!, func, payload as P, { timeout: this._timeout });
-  }
-}
+import { BaseInjector } from './base';
+import { AmazonReview, AmazonSearchItem } from '../page-worker/types';
 
 export class AmazonSearchPageInjector extends BaseInjector {
   public waitForPageLoaded() {
@@ -167,7 +148,7 @@ export class AmazonDetailPageInjector extends BaseInjector {
         const targetNode = document.querySelector(
           '#prodDetails:has(td), #detailBulletsWrapper_feature_div:has(li), .av-page-desktop',
         );
-        const exceptionalNodeSelectors = ['music-detail-header', '.avu-retail-page'];
+        const exceptionalNodeSelectors = ['.music-detail-header', '.avu-retail-page'];
         for (const selector of exceptionalNodeSelectors) {
           if (document.querySelector(selector)) {
             return false;
@@ -442,81 +423,5 @@ export class AmazonReviewPageInjector extends BaseInjector {
       },
       { star },
     );
-  }
-}
-
-export class HomedepotDetailPageInjector extends BaseInjector {
-  constructor(tab: Tabs.Tab) {
-    super(tab, 60000);
-  }
-
-  public waitForPageLoad() {
-    return this.run(async () => {
-      let timeout = false;
-      setTimeout(() => (timeout = true), 15000);
-      const isLoaded = () => {
-        const reviewPlaceholderEl = document.querySelector(
-          `#product-section-rr div[role='button'][aria-expanded='true']`,
-        );
-        return reviewPlaceholderEl && (document.readyState == 'complete' || timeout);
-      };
-      while (true) {
-        await new Promise((resolve) => setTimeout(resolve, 500 + ~~(Math.random() * 500)));
-        document
-          .querySelector<HTMLElement>(
-            `#product-section-rr div[role='button'][aria-expanded='false'], #product-section-overview div[role='button'][aria-expanded='false']`,
-          )
-          ?.click();
-        const { scrollHeight, scrollTop } = document.documentElement;
-        scrollHeight - scrollTop > 100
-          ? window.scrollBy({ top: 100, behavior: 'smooth' })
-          : document
-              .querySelector('[data-component^="product-details:ProductDetailsTitle"]')
-              ?.scrollIntoView({ behavior: 'smooth' });
-        if (isLoaded()) {
-          break;
-        }
-      }
-    });
-  }
-
-  public getInfo() {
-    return this.run(async () => {
-      const link = document.location.toString();
-      const brandName = document.querySelector<HTMLDivElement>(
-        `[data-component^="product-details:ProductDetailsBrandCollection"]`,
-      )?.innerText;
-      const title = document.querySelector<HTMLDivElement>(
-        `[data-component^="product-details:ProductDetailsTitle"]`,
-      )!.innerText;
-      const price = document
-        .querySelector<HTMLDivElement>(`#standard-price`)!
-        .innerText.replaceAll('\n', '');
-      const rateEl = document.querySelector<HTMLDivElement>(
-        `[data-component^="ratings-and-reviews"] .sui-mr-1`,
-      );
-      const rate = rateEl ? /\d(\.\d)?/.exec(rateEl.innerText)![0] : undefined;
-      const reviewCount = rateEl
-        ? Number(
-            /\d+/.exec(
-              document.querySelector<HTMLDivElement>(
-                `[data-component^="ratings-and-reviews"] [name="simple-rating"] + span`,
-              )!.innerText,
-            )![0],
-          )
-        : undefined;
-      const mainImageUrl = document.querySelector<HTMLImageElement>(
-        `.mediagallery__mainimage img`,
-      )!.src;
-      return {
-        link,
-        brandName,
-        title,
-        price,
-        rate,
-        reviewCount,
-        mainImageUrl,
-      } as Omit<HomedepotDetailItem, 'OSMID'>;
-    });
   }
 }

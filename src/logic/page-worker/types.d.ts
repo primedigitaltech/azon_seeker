@@ -39,18 +39,6 @@ type AmazonItem = Pick<AmazonSearchItem, 'asin'> &
   Partial<AmazonSearchItem> &
   Partial<AmazonDetailItem> & { hasDetail: boolean };
 
-type HomedepotDetailItem = {
-  OSMID: string;
-  link: string;
-  brandName?: string;
-  title: string;
-  price: string;
-  rate?: string;
-  innerText: string;
-  reviewCount?: number;
-  mainImageUrl: string;
-};
-
 interface AmazonPageWorkerEvents {
   /**
    * The event is fired when worker collected links to items on the Amazon search page.
@@ -82,17 +70,6 @@ interface AmazonPageWorkerEvents {
   ['item-review-collected']: { asin: string; reviews: AmazonReview[] };
   /**
    * Error event that occurs when there is an issue with the Amazon page worker
-   */
-  ['error']: { message: string; url?: string };
-}
-
-interface HomedepotEvents {
-  /**
-   * The event is fired when detail items collect
-   */
-  ['detail-item-collected']: { item: HomedepotDetailItem };
-  /**
-   * The event is fired when error occurs.
    */
   ['error']: { message: string; url?: string };
 }
@@ -137,6 +114,30 @@ interface AmazonPageWorker {
   stop(): Promise<void>;
 }
 
+type HomedepotDetailItem = {
+  OSMID: string;
+  link: string;
+  brandName?: string;
+  title: string;
+  price: string;
+  rate?: string;
+  innerText: string;
+  reviewCount?: number;
+  mainImageUrl: string;
+  modelInfo?: string;
+};
+
+interface HomedepotEvents {
+  /**
+   * The event is fired when detail items collect
+   */
+  ['detail-item-collected']: { item: HomedepotDetailItem };
+  /**
+   * The event is fired when error occurs.
+   */
+  ['error']: { message: string; url?: string };
+}
+
 interface HomedepotWorker {
   /**
    * The channel for communication with the Homedepot page worker.
@@ -148,6 +149,50 @@ interface HomedepotWorker {
    */
   runDetailPageTask(
     OSMIDs: string[],
+    progress?: (remains: string[]) => Promise<void> | void,
+  ): Promise<void>;
+
+  /**
+   * Stop the worker.
+   */
+  stop(): Promise<void>;
+}
+
+type LowesDetailItem = {
+  OSMID: string;
+  link: string;
+  brandName?: string;
+  title: string;
+  price: string;
+  rate?: string;
+  innerText: string;
+  reviewCount?: number;
+  mainImageUrl: string;
+  modelInfo?: string;
+};
+
+interface LowesEvents {
+  /**
+   * The event is fired when detail items collect
+   */
+  ['detail-item-collected']: { item: LowesDetailItem };
+  /**
+   * The event is fired when error occurs.
+   */
+  ['error']: { message: string; url?: string };
+}
+
+interface LowesWorker {
+  /**
+   * The channel for communication with the Lowes page worker.
+   */
+  readonly channel: Emittery<LowesEvents>;
+
+  /**
+   * Browsing goods detail page and collect target information
+   */
+  runDetailPageTask(
+    urls: string[],
     progress?: (remains: string[]) => Promise<void> | void,
   ): Promise<void>;
 

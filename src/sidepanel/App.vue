@@ -35,12 +35,14 @@ watch(currentUrl, (newVal) => {
 <template>
   <!-- Naive UI Wrapper-->
   <n-config-provider :theme-overrides="theme">
-    <n-message-provider>
-      <n-dialog-provider>
-        <n-modal-provider>
-          <router-view />
-        </n-modal-provider>
-      </n-dialog-provider>
-    </n-message-provider>
+    <n-loading-bar-provider>
+      <n-message-provider>
+        <n-dialog-provider>
+          <n-modal-provider>
+            <router-view />
+          </n-modal-provider>
+        </n-dialog-provider>
+      </n-message-provider>
+    </n-loading-bar-provider>
   </n-config-provider>
 </template>

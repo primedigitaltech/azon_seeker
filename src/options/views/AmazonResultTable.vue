@@ -1,14 +1,14 @@
-<script setup lang="ts">
+<script setup lang="tsx">
 import { NButton, NSpace } from 'naive-ui';
 import type { TableColumn } from 'naive-ui/es/data-table/src/interface';
-import { createWorkbook, Header, importFromXLSX } from '~/logic/data-io';
-import type { AmazonDetailItem, AmazonItem, AmazonReview } from '~/logic/page-worker/types';
+import { useCloudExporter } from '~/composables/useCloudExporter';
+import { castRecordsByHeaders, createWorkbook, Header, importFromXLSX } from '~/logic/data-io';
+import type { AmazonItem, AmazonReview } from '~/logic/page-worker/types';
 import { allItems, reviewItems } from '~/logic/storage';
-import DetailDescription from '~/components/DetailDescription.vue';
-import ReviewPreview from '~/components/ReviewPreview.vue';
 
 const message = useMessage();
 const modal = useModal();
+const cloudExporter = useCloudExporter();
 
 const page = reactive({ current: 1, size: 10 });
 
@@ -49,7 +49,7 @@ const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
     type: 'expand',
     expandable: (row) => row.hasDetail,
     renderExpand(row) {
-      return h(DetailDescription, { model: row as AmazonDetailItem }, () => '');
+      return <detail-description model={row} />;
     },
   },
   {
@@ -76,7 +76,7 @@ const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
     title: '标题',
     key: 'title',
     render(row) {
-      return h('div', { style: {} }, `${row.title}`);
+      return <div>{row.title}</div>;
     },
   },
   {
@@ -99,49 +99,40 @@ const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
     key: 'actions',
     minWidth: 100,
     render(row) {
-      return h(NSpace, {}, () =>
-        [
-          {
-            text: '评论',
-            disabled: !reviewItems.value.has(row.asin),
-            onClick: () => {
-              const asin = row.asin;
-              modal.create({
-                title: `${asin}评论`,
-                preset: 'card',
-                style: {
-                  width: '80vw',
-                  height: '85vh',
-                },
-                content: () =>
-                  h(ReviewPreview, {
-                    asin,
-                  }),
-              });
-            },
-          },
-          {
-            text: '链接',
-            onClick: () => {
-              browser.tabs.create({
-                active: true,
-                url: row.link,
-              });
-            },
-          },
-        ].map(({ text, onClick, disabled }) =>
-          h(
-            NButton,
+      return (
+        <n-space>
+          {[
             {
-              type: 'primary',
-              text: true,
-              size: 'small',
-              disabled: disabled,
-              onClick: onClick,
+              text: '评论',
+              disabled: !reviewItems.value.has(row.asin),
+              onClick: () => {
+                const asin = row.asin;
+                modal.create({
+                  title: `${asin}评论`,
+                  preset: 'card',
+                  style: {
+                    width: '80vw',
+                    height: '85vh',
+                  },
+                  content: () => <review-preview asin={asin} />,
+                });
+              },
             },
-            () => text,
-          ),
-        ),
+            {
+              text: '链接',
+              onClick: () => {
+                browser.tabs.create({
+                  active: true,
+                  url: row.link,
+                });
+              },
+            },
+          ].map(({ text, onClick, disabled }) => (
+            <n-button type="primary" text size="small" disabled={disabled} onClick={onClick}>
+              {text}
+            </n-button>
+          ))}
+        </n-space>
       );
     },
   },
@@ -231,7 +222,7 @@ const filterItemData = (data: AmazonItem[]): AmazonItem[] => {
   return data;
 };
 
-const handleExport = async () => {
+const handleLocalExport = async () => {
   const itemHeaders = getItemHeaders();
   const items = toRaw(itemView.value).origin;
   const asins = new Set(items.map((e) => e.asin));
@@ -249,7 +240,32 @@ const handleExport = async () => {
   const sheet2 = wb.addSheet('reviews');
   await sheet2.readJson(reviews, { headers: reviewHeaders });
   await wb.exportFile(`Items ${dayjs().format('YYYY-MM-DD')}.xlsx`);
+
   message.info('导出完成');
+};
+
+const handleCloudExport = async () => {
+  message.warning('正在导出，请勿关闭当前页面！', { duration: 2000 });
+
+  const itemHeaders = getItemHeaders();
+  const items = toRaw(itemView.value).origin;
+  const asins = new Set(items.map((e) => e.asin));
+  const reviews = toRaw(reviewItems.value)
+    .entries()
+    .filter(([asin]) => asins.has(asin))
+    .reduce<(AmazonReview & { asin: string })[]>((a, [asin, reviews]) => {
+      a.push(...reviews.map((r) => ({ asin, ...r })));
+      return a;
+    }, []);
+  const mappedData1 = await castRecordsByHeaders(items, itemHeaders);
+  const mappedData2 = await castRecordsByHeaders(reviews, reviewHeaders);
+  const fragments = [
+    { data: mappedData1, imageColumn: '商品图片链接', name: 'items' },
+    { data: mappedData2, imageColumn: '图片链接', name: 'reviews' },
+  ];
+  const filename = await cloudExporter.doExport(fragments);
+
+  filename && message.info(`导出完成`);
 };
 
 const handleImport = async (file: File) => {
@@ -306,13 +322,46 @@ const handleClearData = async () => {
             clearable
             style="min-width: 230px"
           />
-          <control-strip
-            round
-            size="small"
-            @clear="handleClearData"
-            @export="handleExport"
-            @import="handleImport"
-          >
+          <control-strip round size="small" @clear="handleClearData" @import="handleImport">
+            <template #exporter>
+              <ul v-if="!cloudExporter.isRunning.value" class="exporter-menu">
+                <li @click="handleLocalExport">
+                  <n-tooltip :delay="1000" placement="right">
+                    <template #trigger>
+                      <div class="menu-item">
+                        <n-icon><lucide-sheet /></n-icon>
+                        <span>本地导出</span>
+                      </div>
+                    </template>
+                    不包含图片
+                  </n-tooltip>
+                </li>
+                <li @click="handleCloudExport">
+                  <n-tooltip :delay="1000" placement="right">
+                    <template #trigger>
+                      <div class="menu-item">
+                        <n-icon><ic-outline-cloud /></n-icon>
+                        <span>云端导出</span>
+                      </div>
+                    </template>
+                    包含图片
+                  </n-tooltip>
+                </li>
+              </ul>
+              <div v-else class="expoter-progress-panel">
+                <n-progress
+                  type="circle"
+                  :percentage="
+                    (cloudExporter.progress.current * 100) / cloudExporter.progress.total
+                  "
+                >
+                  <span>
+                    {{ cloudExporter.progress.current }}/{{ cloudExporter.progress.total }}
+                  </span>
+                </n-progress>
+                <n-button @click="cloudExporter.stop()">停止</n-button>
+              </div>
+            </template>
             <template #filter>
               <div class="filter-section">
                 <div class="filter-title">筛选器</div>
@@ -381,6 +430,49 @@ const handleClearData = async () => {
 .data-pagination {
   display: flex;
   flex-direction: row-reverse;
+}
+
+.exporter-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #fff;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  font-size: 15px;
+
+  li {
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+    color: #222;
+    user-select: none;
+    border-radius: 6px;
+
+    &:hover {
+      background: #f0f6fa;
+      color: #007bff;
+    }
+
+    .menu-item {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 5px;
+    }
+  }
+}
+
+.expoter-progress-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  font-size: 18px;
+  padding: 10px;
+  gap: 15px;
+  cursor: wait;
 }
 
 .filter-section {

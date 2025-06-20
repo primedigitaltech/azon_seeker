@@ -22,9 +22,6 @@ class Worksheet {
         const cols = headers.filter((h) => h.ignore?.out !== true);
         for (let j = 0; j < cols.length; j++) {
           const header = cols[j];
-          if (header.ignore?.out) {
-            continue;
-          }
           const value = getAttribute(item, header.prop);
           if (header.formatOutputValue) {
             record[header.label] = await header.formatOutputValue(value, i);
@@ -195,6 +192,30 @@ export type ExportBaseOptions = {
 export type ImportBaseOptions = {
   headers?: Header[];
 };
+
+export function castRecordsByHeaders<T = Record<string, unknown>>(
+  jsonData: Record<string, unknown>[],
+  headers: Omit<Header, 'parseImportValue'>[],
+): Promise<T[]> {
+  return Promise.all(
+    jsonData.map(async (item, i) => {
+      const record: Record<string, unknown> = {};
+      const cols = headers.filter((h) => h.ignore?.out !== true);
+      for (let j = 0; j < cols.length; j++) {
+        const header = cols[j];
+        const value = getAttribute(item, header.prop);
+        if (header.formatOutputValue) {
+          record[header.label] = await header.formatOutputValue(value, i);
+        } else if (['string', 'number', 'bigint', 'boolean'].includes(typeof value)) {
+          record[header.label] = value;
+        } else {
+          record[header.label] = JSON.stringify(value);
+        }
+      }
+      return record as T;
+    }),
+  );
+}
 
 /**
  * 导出为XLSX

@@ -4,6 +4,7 @@ import { dirname, relative } from 'node:path';
 import type { UserConfig } from 'vite';
 import { defineConfig } from 'vite';
 import Vue from '@vitejs/plugin-vue';
+import VueJsx from '@vitejs/plugin-vue-jsx';
 import Icons from 'unplugin-icons/vite';
 import IconsResolver from 'unplugin-icons/resolver';
 import Components from 'unplugin-vue-components/vite';
@@ -26,6 +27,7 @@ export const sharedConfig: UserConfig = {
   },
   plugins: [
     Vue(),
+    VueJsx(),
     AutoImport({
       imports: [
         'vue',
@@ -100,11 +102,11 @@ export default defineConfig(({ command }) => ({
         sidepanel: r('src/sidepanel/index.html'),
         options: r('src/options/index.html'),
       },
-
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('naive-ui')) return 'vendor-naive-ui';
+            if (id.includes('exceljs')) return 'vendor-exceljs';
+            else if (id.includes('naive-ui')) return 'vendor-naive-ui';
             else if (id.includes('vue')) return 'vendor-vue';
             return 'vendor';
           }
