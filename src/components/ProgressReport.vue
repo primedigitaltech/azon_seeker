@@ -1,11 +1,13 @@
 <script setup lang="ts">
+export type Timeline = {
+  type: 'default' | 'error' | 'success' | 'warning' | 'info';
+  title: string;
+  time: string;
+  content: string;
+};
+
 defineProps<{
-  timelines: {
-    type: 'default' | 'error' | 'success' | 'warning' | 'info';
-    title: string;
-    time: string;
-    content: string;
-  }[];
+  timelines: Timeline[];
 }>();
 </script>
 

@@ -57,7 +57,7 @@ const running = ref(false);
 
 <style scoped lang="scss">
 .side-panel {
-  width: 100%;
+  width: 100vw;
   height: 100%;
   display: flex;
   flex-direction: column;

@@ -4,7 +4,7 @@ import type {
   AmazonItem,
   AmazonReview,
   AmazonSearchItem,
-} from './page-worker/types';
+} from '~/logic/page-worker/types';
 
 export const keywordsList = useWebExtensionStorage<string[]>('keywordsList', ['']);
 

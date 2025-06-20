@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { keywordsList } from '~/logic/storage';
+import { keywordsList } from '~/logic/storages/amazon';
 import { amazon as pageWorker } from '~/logic/page-worker';
 import { NButton } from 'naive-ui';
-import { searchItems } from '~/logic/storage';
+import { searchItems } from '~/logic/storages/amazon';
 import { useLongTask } from '~/composables/useLongTask';
+import type { Timeline } from '~/components/ProgressReport.vue';
 
 const message = useMessage();
 const { isRunning, startTask } = useLongTask();
@@ -40,14 +41,7 @@ worker.channel.on('item-links-collected', ({ objs }) => {
 });
 //#endregion
 
-const timelines = ref<
-  {
-    type: 'default' | 'error' | 'success' | 'warning' | 'info';
-    title: string;
-    time: string;
-    content: string;
-  }[]
->([]);
+const timelines = ref<Timeline[]>([]);
 
 const task = async () => {
   const kws = unref(keywordsList);
@@ -95,7 +89,7 @@ const handleInterrupt = () => {
 
 <template>
   <div class="search-page-entry">
-    <header-title>Search Page</header-title>
+    <header-title>Amazon Search</header-title>
     <div class="interactive-section">
       <n-dynamic-input
         :disabled="isRunning"

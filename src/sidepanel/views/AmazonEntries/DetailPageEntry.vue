@@ -1,19 +1,13 @@
 <script setup lang="ts">
+import type { Timeline } from '~/components/ProgressReport.vue';
 import { useLongTask } from '~/composables/useLongTask';
 import { amazon as pageWorker } from '~/logic/page-worker';
 import { AmazonDetailItem } from '~/logic/page-worker/types';
-import { detailAsinInput, detailItems } from '~/logic/storage';
+import { detailAsinInput, detailItems } from '~/logic/storages/amazon';
 
 const message = useMessage();
 
-const timelines = ref<
-  {
-    type: 'default' | 'error' | 'success' | 'warning' | 'info';
-    title: string;
-    time: string;
-    content: string;
-  }[]
->([]);
+const timelines = ref<Timeline[]>([]);
 
 const { isRunning, startTask } = useLongTask();
 
@@ -133,9 +127,9 @@ const handleInterrupt = () => {
 
 <template>
   <div class="detail-page-entry">
-    <header-title>Detail Page</header-title>
+    <header-title>Amazon Detail</header-title>
     <div class="interative-section">
-      <asins-input v-model="detailAsinInput" :disabled="isRunning" ref="asin-input" />
+      <ids-input v-model="detailAsinInput" :disabled="isRunning" ref="asin-input" />
       <n-button v-if="!isRunning" round size="large" type="primary" @click="handleStart">
         <template #icon>
           <ant-design-thunderbolt-outlined />

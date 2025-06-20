@@ -2,12 +2,18 @@
 import { useFileDialog } from '@vueuse/core';
 import type { FormItemRule } from 'naive-ui';
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     disabled?: boolean;
+    matchPattern?: RegExp;
+    placeholder?: string;
+    validateMessage?: string;
   }>(),
   {
     disabled: false,
+    matchPattern: () => /^[A-Z0-9]{10}((\n|\s|,|;)[A-Z0-9]{10})*\n?$/g,
+    placeholder: '输入ASINs',
+    validateMessage: '请输入格式正确的ASIN',
   },
 );
 
@@ -19,20 +25,20 @@ const formItemRef = useTemplateRef('detail-form-item');
 const formItemRule: FormItemRule = {
   required: true,
   trigger: ['submit', 'blur'],
-  message: '请输入格式正确的ASIN',
+  message: props.validateMessage,
   validator: () => {
-    return modelValue.value.match(/^[A-Z0-9]{10}((\n|\s|,|;)[A-Z0-9]{10})*\n?$/g) !== null;
+    return props.matchPattern.exec(modelValue.value) !== null;
   },
 };
 
 const fileDialog = useFileDialog({ accept: '.txt', multiple: false });
 fileDialog.onChange((fileList) => {
   const file = fileList?.item(0);
-  file && handleImportAsin(file);
+  file && handleImportIds(file);
   fileDialog.reset();
 });
 
-const handleImportAsin = (file: File) => {
+const handleImportIds = (file: File) => {
   const reader = new FileReader();
   reader.onload = (e) => {
     const content = e.target?.result;
@@ -43,10 +49,10 @@ const handleImportAsin = (file: File) => {
   reader.readAsText(file, 'utf-8');
 };
 
-const handleExportAsin = () => {
+const handleExportIds = () => {
   const blob = new Blob([modelValue.value], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
-  const filename = `asin-${new Date().toISOString()}.txt`;
+  const filename = `${new Date().toISOString()}.txt`;
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
@@ -75,7 +81,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="asin-input">
+  <div class="ids-input">
     <n-space>
       <n-button @click="fileDialog.open()" :disabled="disabled" round size="small">
         <template #icon>
@@ -83,7 +89,7 @@ defineExpose({
         </template>
         导入
       </n-button>
-      <n-button :disabled="disabled" @click="handleExportAsin" round size="small">
+      <n-button :disabled="disabled" @click="handleExportIds" round size="small">
         <template #icon>
           <ion-arrow-up-right-box-outline />
         </template>
@@ -95,7 +101,7 @@ defineExpose({
       <n-input
         :disabled="disabled"
         v-model:value="modelValue"
-        placeholder="输入ASINs"
+        :placeholder="placeholder"
         type="textarea"
         size="large"
       />

@@ -13,4 +13,4 @@ export function isForbiddenUrl(url: string): boolean {
 
 export const isFirefox = navigator.userAgent.includes('Firefox');
 
-export const remoteHost = __DEV__ ? '127.0.0.1:8000' : '127.0.0.1:8000';
+export const remoteHost = __DEV__ ? '127.0.0.1:8000' : '47.251.4.191:8000';

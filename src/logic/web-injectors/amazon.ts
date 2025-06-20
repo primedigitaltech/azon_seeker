@@ -226,17 +226,22 @@ export class AmazonDetailPageInjector extends BaseInjector {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
-      const script = document.evaluate(
-        `//script[starts-with(text(), "\nP.when(\'A\').register")]`,
+      let script = document.evaluate(
+        `//script[starts-with(text(), "\nP.when(\'A\').register") or contains(text(), "\nP.when('A').register")]`,
         document,
         null,
         XPathResult.STRING_TYPE,
       ).stringValue;
-      const urls = [
-        ...script.matchAll(
-          /(?<="hiRes":")https:\/\/m.media-amazon.com\/images\/I\/[\w\d\.\-+]+(?=")/g,
-        ),
-      ].map((e) => e[0]);
+      const extractUrls = (pattern: RegExp) =>
+        Array.from(script.matchAll(pattern)).map((e) => e[0]);
+      let urls = extractUrls(
+        /(?<="hiRes":")https:\/\/m.media-amazon.com\/images\/I\/[\w\d\.\-+]+(?=")/g,
+      );
+      if (urls.length === 0) {
+        urls = extractUrls(
+          /(?<="large":")https:\/\/m.media-amazon.com\/images\/I\/[\w\d\.\-+]+(?=")/g,
+        );
+      }
       return urls;
     });
   }

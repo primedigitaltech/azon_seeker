@@ -1,16 +1,14 @@
 <script setup lang="tsx">
 import { NButton, NSpace } from 'naive-ui';
-import type { TableColumn } from 'naive-ui/es/data-table/src/interface';
+import type { TableColumn } from '~/components/ResultTable.vue';
 import { useCloudExporter } from '~/composables/useCloudExporter';
 import { castRecordsByHeaders, createWorkbook, Header, importFromXLSX } from '~/logic/data-io';
 import type { AmazonItem, AmazonReview } from '~/logic/page-worker/types';
-import { allItems, reviewItems } from '~/logic/storage';
+import { allItems, reviewItems } from '~/logic/storages/amazon';
 
 const message = useMessage();
 const modal = useModal();
 const cloudExporter = useCloudExporter();
-
-const page = reactive({ current: 1, size: 10 });
 
 const defaultFilter = {
   keywords: undefined as string | undefined,
@@ -44,7 +42,7 @@ const onFilterReset = () => {
   Object.assign(filter, defaultFilter);
 };
 
-const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
+const columns: TableColumn[] = [
   {
     type: 'expand',
     expandable: (row) => row.hasDetail,
@@ -75,9 +73,6 @@ const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
   {
     title: '标题',
     key: 'title',
-    render(row) {
-      return <div>{row.title}</div>;
-    },
   },
   {
     title: '价格',
@@ -138,20 +133,6 @@ const columns: (TableColumn<AmazonItem> & { hidden?: boolean })[] = [
   },
 ];
 
-const itemView = computed<{ records: AmazonItem[]; pageCount: number; origin: AmazonItem[] }>(
-  () => {
-    const { current, size } = page;
-    const data = filterItemData(allItems.value); // Filter Data
-    const pageCount = ~~(data.length / size) + (data.length % size > 0 ? 1 : 0);
-    const offset = (current - 1) * size;
-    if (data.length > 0 && offset >= data.length) {
-      page.current = 1;
-    }
-    const records = data.slice(offset, offset + size);
-    return { records, pageCount, origin: data };
-  },
-);
-
 const extraHeaders: Header[] = [
   { prop: 'link', label: '商品链接' },
   {
@@ -204,8 +185,9 @@ const getItemHeaders = () => {
     .concat(extraHeaders) as Header[];
 };
 
-const filterItemData = (data: AmazonItem[]): AmazonItem[] => {
+const filteredData = computed(() => {
   const { search, detailOnly, keywords } = filter;
+  let data = toRaw(allItems.value);
   if (search.trim() !== '') {
     data = data.filter((r) => {
       return [r.title, r.asin, r.keywords].some((field) =>
@@ -220,11 +202,11 @@ const filterItemData = (data: AmazonItem[]): AmazonItem[] => {
     data = data.filter((r) => r.keywords === keywords);
   }
   return data;
-};
+});
 
 const handleLocalExport = async () => {
   const itemHeaders = getItemHeaders();
-  const items = toRaw(itemView.value).origin;
+  const items = toRaw(filteredData.value);
   const asins = new Set(items.map((e) => e.asin));
   const reviews = toRaw(reviewItems.value)
     .entries()
@@ -248,7 +230,7 @@ const handleCloudExport = async () => {
   message.warning('正在导出，请勿关闭当前页面！', { duration: 2000 });
 
   const itemHeaders = getItemHeaders();
-  const items = toRaw(itemView.value).origin;
+  const items = toRaw(filteredData.value);
   const asins = new Set(items.map((e) => e.asin));
   const reviews = toRaw(reviewItems.value)
     .entries()
@@ -302,10 +284,10 @@ const handleClearData = async () => {
 
 <template>
   <div class="result-table">
-    <n-card class="result-content-container">
+    <result-table :columns="columns" :records="filteredData">
       <template #header>
         <n-space>
-          <div style="padding-right: 10px">结果数据表</div>
+          <div style="padding-right: 10px">Amazon数据</div>
           <n-switch size="small" class="filter-switch" v-model:value="filter.detailOnly">
             <template #checked> 详情 </template>
             <template #unchecked> 全部</template>
@@ -382,54 +364,13 @@ const handleClearData = async () => {
           </control-strip>
         </n-space>
       </template>
-      <n-empty v-if="itemView.records.length === 0" size="huge">
-        <template #icon>
-          <n-icon size="60">
-            <solar-cat-linear />
-          </n-icon>
-        </template>
-        <template #default>
-          <h3>还没有数据哦</h3>
-        </template>
-      </n-empty>
-      <n-space vertical v-else>
-        <n-data-table
-          :row-key="(row: any) => `${row.asin}-${~~(Math.random() * 10000)}`"
-          :columns="columns.filter((col) => col.hidden !== true)"
-          :data="itemView.records"
-        />
-        <div class="data-pagination">
-          <n-pagination
-            v-model:page="page.current"
-            v-model:page-size="page.size"
-            :page-count="itemView.pageCount"
-            :page-sizes="[5, 10, 15, 20, 25]"
-            show-size-picker
-          />
-        </div>
-      </n-space>
-    </n-card>
+    </result-table>
   </div>
 </template>
 
 <style lang="scss" scoped>
-.result-content-container {
-  min-height: 100%;
-  :deep(.n-card__content:has(.n-empty)) {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    justify-content: center;
-  }
-}
-
 :deep(.filter-switch) {
   font-size: 15px;
-}
-
-.data-pagination {
-  display: flex;
-  flex-direction: row-reverse;
 }
 
 .exporter-menu {

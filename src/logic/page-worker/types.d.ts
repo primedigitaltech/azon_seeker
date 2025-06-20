@@ -121,7 +121,6 @@ type HomedepotDetailItem = {
   title: string;
   price: string;
   rate?: string;
-  innerText: string;
   reviewCount?: number;
   mainImageUrl: string;
   modelInfo?: string;

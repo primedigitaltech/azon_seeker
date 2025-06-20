@@ -1,26 +1,7 @@
 <script lang="ts" setup>
 import type { AmazonDetailItem } from '~/logic/page-worker/types';
-import { reviewItems } from '~/logic/storage';
-import ReviewPreview from './ReviewPreview.vue';
 
-const props = defineProps<{ model: AmazonDetailItem }>();
-
-const modal = useModal();
-const handleLoadMore = () => {
-  const asin = props.model.asin;
-  modal.create({
-    title: `${asin}评论`,
-    preset: 'card',
-    style: {
-      width: '80vw',
-      height: '85vh',
-    },
-    content: () =>
-      h(ReviewPreview, {
-        asin,
-      }),
-  });
-};
+defineProps<{ model: AmazonDetailItem }>();
 </script>
 
 <template>
@@ -50,25 +31,6 @@ const handleLoadMore = () => {
       <n-descriptions-item label="图片链接" :span="4">
         <image-link v-for="link in model.imageUrls" :url="link" />
       </n-descriptions-item>
-      <!-- <n-descriptions-item
-        v-if="model.topReviews && model.topReviews.length > 0"
-        label="精选评论"
-        :span="4"
-      >
-        <n-scrollbar style="max-height: 350px">
-          <div class="review-item-cotent">
-            <template v-for="review in model.topReviews">
-              <review-card :model="review" />
-              <div style="height: 7px"></div>
-            </template>
-          </div>
-        </n-scrollbar>
-        <div class="review-item-footer">
-          <n-button :disabled="!reviewItems.has(model.asin)" @click="handleLoadMore" size="small">
-            更多评论
-          </n-button>
-        </div>
-      </n-descriptions-item> -->
     </n-descriptions>
   </div>
 </template>

@@ -2,6 +2,7 @@
 import type { GlobalThemeOverrides } from 'naive-ui';
 import { useRouter } from 'vue-router';
 import { useCurrentUrl } from '~/composables/useCurrentUrl';
+import { site } from '~/logic/storages/global';
 
 const theme: GlobalThemeOverrides = {
   common: {
@@ -21,11 +22,14 @@ watch(currentUrl, (newVal) => {
     switch (url.hostname) {
       case 'www.amazon.com':
         router.push('/amazon');
+        site.value = 'amazon';
         break;
       case 'www.homedepot.com':
         router.push('/homedepot');
+        site.value = 'homedepot';
         break;
       default:
+        router.push(`/${site.value}`);
         break;
     }
   }
