@@ -43,21 +43,16 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
 
   private async wanderSearchSinglePage(tab: Tabs.Tab) {
     const injector = new AmazonSearchPageInjector(tab);
-    // #region Wait for the Next button to appear, indicating that the product items have finished loading
+    // Wait for the Next button to appear, indicating that the product items have finished loading
     await injector.waitForPageLoaded();
-    // #endregion
-    // #region Determine the type of product search page https://github.com/primedigitaltech/azon_seeker/issues/1
+    // Determine the type of product search page https://github.com/primedigitaltech/azon_seeker/issues/1
     const pagePattern = await injector.getPagePattern();
-    // #endregion
-    // #region Retrieve key nodes and their information from the critical product search page
+    // Retrieve key nodes and their information from the critical product search page
     const data = await injector.getPageData(pagePattern);
-    // #endregion
-    // #region get current page
+    // get current page
     const page = await injector.getCurrentPage();
-    // #endregion
-    // #region Determine if it is the last page, otherwise navigate to the next page
+    // Determine if it is the last page, otherwise navigate to the next page
     const hasNextPage = await injector.determineHasNextPage();
-    // #endregion
     await new Promise((resolve) => setTimeout(resolve, 1000));
     if (data === null || typeof hasNextPage !== 'boolean') {
       this.channel.emit('error', { message: '爬取单页信息失败', url: tab.url });
@@ -135,20 +130,12 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     //#endregion
     //#region Fetch Base Info
     const baseInfo = await injector.getBaseInfo();
+    const ratingInfo = await injector.getRatingInfo();
     this.channel.emit('item-base-info-collected', {
       asin: params.asin,
-      title: baseInfo.title,
-      price: baseInfo.price,
+      ...baseInfo,
+      ...ratingInfo,
     });
-    //#endregion
-    //#region Fetch Rating Info
-    const ratingInfo = await injector.getRatingInfo();
-    if (ratingInfo && (ratingInfo.rating !== 0 || ratingInfo.ratingCount !== 0)) {
-      this.channel.emit('item-rating-collected', {
-        asin: params.asin,
-        ...ratingInfo,
-      });
-    }
     //#endregion
     //#region Fetch Category Rank Info
     let rawRankingText: string | null = await injector.getRankText();
@@ -194,6 +181,9 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     //     topReviews: reviews,
     //   });
     //#endregion
+    // #region Get APlus Sreen shot
+    await injector.scanAPlus();
+    // #endregion
   }
 
   @withErrorHandling

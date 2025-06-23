@@ -47,11 +47,10 @@ interface AmazonPageWorkerEvents {
   /**
    * The event is fired when worker collected goods' base info on the Amazon detail page.
    */
-  ['item-base-info-collected']: Pick<AmazonDetailItem, 'asin' | 'title' | 'price'>;
-  /**
-   * The event is fired when worker collected goods' rating on the Amazon detail page.
-   */
-  ['item-rating-collected']: Pick<AmazonDetailItem, 'asin' | 'rating' | 'ratingCount'>;
+  ['item-base-info-collected']: Pick<
+    AmazonDetailItem,
+    'asin' | 'title' | 'price' | 'rating' | 'ratingCount'
+  >;
   /**
    * The event is fired when worker
    */

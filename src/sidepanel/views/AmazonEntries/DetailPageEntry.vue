@@ -39,16 +39,7 @@ worker.channel.on('item-base-info-collected', (ev) => {
     type: 'success',
     title: `商品${ev.asin}基本信息`,
     time: new Date().toLocaleString(),
-    content: `标题： ${ev.title}；价格：${ev.price}`,
-  });
-  updateDetailItems(ev);
-});
-worker.channel.on('item-rating-collected', (ev) => {
-  timelines.value.push({
-    type: 'success',
-    title: `商品${ev.asin}评价信息`,
-    time: new Date().toLocaleString(),
-    content: `评分： ${ev.rating}；评价数：${ev.ratingCount}`,
+    content: `标题： ${ev.title}；价格：${ev.price}; 评分: ${ev.rating}; 评论数: ${ev.ratingCount}`,
   });
   updateDetailItems(ev);
 });

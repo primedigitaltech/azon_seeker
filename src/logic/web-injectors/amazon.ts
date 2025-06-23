@@ -299,6 +299,24 @@ export class AmazonDetailPageInjector extends BaseInjector {
       return items;
     });
   }
+
+  public async scanAPlus() {
+    return this.run(async () => {
+      const aplusEl = document.querySelector<HTMLElement>('#aplus')!;
+      while (aplusEl.getClientRects().length === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      aplusEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      while (true) {
+        const rect = aplusEl.getClientRects()[0];
+        if (rect.top + rect.height < 100) {
+          break;
+        }
+        window.scrollBy({ top: 100, behavior: 'smooth' });
+        await new Promise((resolve) => setTimeout(resolve, 100 + ~~(100 * Math.random())));
+      }
+    });
+  }
 }
 
 export class AmazonReviewPageInjector extends BaseInjector {

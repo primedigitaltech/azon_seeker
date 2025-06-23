@@ -24,7 +24,7 @@ const message = useMessage();
 const formItemRef = useTemplateRef('detail-form-item');
 const formItemRule: FormItemRule = {
   required: true,
-  trigger: ['submit', 'blur'],
+  trigger: ['submit'],
   message: props.validateMessage,
   validator: () => {
     return props.matchPattern.exec(modelValue.value) !== null;

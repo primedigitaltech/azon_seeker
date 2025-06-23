@@ -369,6 +369,10 @@ const handleClearData = async () => {
 </template>
 
 <style lang="scss" scoped>
+.result-table {
+  width: 100%;
+}
+
 :deep(.filter-switch) {
   font-size: 15px;
 }

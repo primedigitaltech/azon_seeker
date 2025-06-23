@@ -1,3 +1,6 @@
+// https://github.com/serversideup/webext-bridge/issues/67#issuecomment-2676094094
+import('webext-bridge/background');
+
 // only on dev mode
 if (import.meta.hot) {
   // @ts-expect-error for background HMR
