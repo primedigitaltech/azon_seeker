@@ -28,7 +28,14 @@ const handleStart = () =>
       content: '任务开始',
       time: new Date().toLocaleString(),
     });
-    await worker.runDetailPageTask(inputText.value.split('\n').filter((id) => /\d+/.exec(id)));
+    await worker.runDetailPageTask(
+      inputText.value.split('\n').filter((id) => /\d+/.exec(id)),
+      {
+        progress: (remains) => {
+          inputText.value = remains.join('\n');
+        },
+      },
+    );
     timelines.value.push({
       type: 'info',
       title: `结束`,

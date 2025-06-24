@@ -19,7 +19,7 @@ watch(isRunning, (newVal) => {
 });
 
 //#region Initial Page Worker
-const worker = pageWorker.useAmazonPageWorker();
+const worker = pageWorker.getAmazonPageWorker();
 worker.channel.on('error', ({ message: msg }) => {
   timelines.value.push({
     type: 'error',
@@ -54,16 +54,18 @@ const task = async () => {
     },
   ];
   timelines.value.push();
-  await worker.runSearchPageTask(kws, async (remains) => {
-    if (remains.length > 0) {
-      timelines.value.push({
-        type: 'info',
-        title: '开始',
-        time: new Date().toLocaleString(),
-        content: `关键词: ${remains[0]} 数据采集开始`,
-      });
-      keywordsList.value = remains;
-    }
+  await worker.runSearchPageTask(kws, {
+    progress: (remains) => {
+      if (remains.length > 0) {
+        timelines.value.push({
+          type: 'info',
+          title: '开始',
+          time: new Date().toLocaleString(),
+          content: `关键词: ${remains[0]} 数据采集开始`,
+        });
+        keywordsList.value = remains;
+      }
+    },
   });
   timelines.value.push({
     type: 'info',

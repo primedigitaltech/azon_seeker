@@ -2,8 +2,7 @@
 import { NButton, NSpace } from 'naive-ui';
 import type { TableColumn } from '~/components/ResultTable.vue';
 import { useCloudExporter } from '~/composables/useCloudExporter';
-import { castRecordsByHeaders, createWorkbook, Header, importFromXLSX } from '~/logic/data-io';
-import type { AmazonItem, AmazonReview } from '~/logic/page-worker/types';
+import { castRecordsByHeaders, createWorkbook, Header, importFromXLSX } from '~/logic/excel';
 import { allItems, reviewItems } from '~/logic/storages/amazon';
 
 const message = useMessage();
@@ -47,7 +46,7 @@ const columns: TableColumn[] = [
     type: 'expand',
     expandable: (row) => row.hasDetail,
     renderExpand(row) {
-      return <detail-description model={row} />;
+      return <amazon-detail-description model={row} />;
     },
   },
   {
@@ -133,7 +132,7 @@ const columns: TableColumn[] = [
   },
 ];
 
-const extraHeaders: Header[] = [
+const extraHeaders: Header<AmazonItem>[] = [
   { prop: 'link', label: '商品链接' },
   {
     prop: 'hasDetail',
@@ -150,12 +149,15 @@ const extraHeaders: Header[] = [
   {
     prop: 'imageUrls',
     label: '商品图片链接',
-    formatOutputValue: (val?: string[]) => val?.join(';'),
+    formatOutputValue: (val: string[] | undefined, _i, rowData) => {
+      if (!val) return undefined;
+      return rowData.aplus ? val.concat([rowData.aplus]).join(';') : val.join(';');
+    },
     parseImportValue: (val?: string) => val?.split(';'),
   },
 ];
 
-const reviewHeaders: Header[] = [
+const reviewHeaders: Header<AmazonReview>[] = [
   { prop: 'asin', label: 'ASIN' },
   { prop: 'username', label: '用户名' },
   { prop: 'title', label: '标题' },

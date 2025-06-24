@@ -29,7 +29,6 @@ watch(currentUrl, (newVal) => {
         site.value = 'homedepot';
         break;
       default:
-        router.push(`/${site.value}`);
         break;
     }
   }

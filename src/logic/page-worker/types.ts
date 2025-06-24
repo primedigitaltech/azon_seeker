@@ -1,45 +1,8 @@
 import type Emittery from 'emittery';
-import { TaskQueue } from '../task-queue';
 
-type AmazonSearchItem = {
-  keywords: string;
-  page: number;
-  link: string;
-  title: string;
-  asin: string;
-  rank: number;
-  price?: string;
-  imageSrc: string;
-  createTime: string;
-};
+export type LanchTaskBaseOptions = { progress?: (remains: string[]) => Promise<void> | void };
 
-type AmazonDetailItem = {
-  asin: string;
-  title: string;
-  price?: string;
-  rating?: number;
-  ratingCount?: number;
-  category1?: { name: string; rank: number };
-  category2?: { name: string; rank: number };
-  imageUrls?: string[];
-  topReviews?: AmazonReview[];
-};
-
-type AmazonReview = {
-  id: string;
-  username: string;
-  title: string;
-  rating: string;
-  dateInfo: string;
-  content: string;
-  imageSrc: string[];
-};
-
-type AmazonItem = Pick<AmazonSearchItem, 'asin'> &
-  Partial<AmazonSearchItem> &
-  Partial<AmazonDetailItem> & { hasDetail: boolean };
-
-interface AmazonPageWorkerEvents {
+export interface AmazonPageWorkerEvents {
   /**
    * The event is fired when worker collected links to items on the Amazon search page.
    */
@@ -64,6 +27,10 @@ interface AmazonPageWorkerEvents {
    */
   ['item-top-reviews-collected']: Pick<AmazonDetailItem, 'asin' | 'topReviews'>;
   /**
+   * The event is fired when aplus screenshot-collect
+   */
+  ['item-aplus-screenshot-collect']: { asin: string; base64data: string };
+  /**
    * The event is fired when reviews collected in all review page
    */
   ['item-review-collected']: { asin: string; reviews: AmazonReview[] };
@@ -73,7 +40,7 @@ interface AmazonPageWorkerEvents {
   ['error']: { message: string; url?: string };
 }
 
-interface AmazonPageWorker {
+export interface AmazonPageWorker {
   /**
    * The channel for communication with the Amazon page worker.
    * This is an instance of Emittery, which allows for event-based communication.
@@ -83,29 +50,26 @@ interface AmazonPageWorker {
   /**
    * Browsing goods search page and collect links to those goods.
    * @param keywordsList - The keywords list to search for on Amazon.
-   * @param progress The callback that receive remaining keywords as the parameter.
+   * @param options The Options Specify Behaviors.
    */
-  runSearchPageTask(
-    keywordsList: string[],
-    progress?: (remains: string[]) => Promise<void>,
-  ): Promise<void>;
+  runSearchPageTask(keywordsList: string[], options?: LanchTaskBaseOptions): Promise<void>;
 
   /**
    * Browsing goods detail page and collect target information.
    * @param asins Amazon Standard Identification Numbers.
-   * @param progress The callback that receive remaining asins as the parameter.
+   * @param options The Options Specify Behaviors.
    */
-  runDetaiPageTask(asins: string[], progress?: (remains: string[]) => Promise<void>): Promise<void>;
+  runDetaiPageTask(
+    asins: string[],
+    options?: LanchTaskBaseOptions & { aplus?: boolean },
+  ): Promise<void>;
 
   /**
    * Browsing goods review page and collect target information.
    * @param asins Amazon Standard Identification Numbers.
-   * @param progress The callback that receive remaining asins as the parameter.
+   * @param options The Options Specify Behaviors.
    */
-  runReviewPageTask(
-    asins: string[],
-    progress?: (remains: string[]) => Promise<void>,
-  ): Promise<void>;
+  runReviewPageTask(asins: string[], options?: LanchTaskBaseOptions): Promise<void>;
 
   /**
    * Stop the worker.
@@ -113,19 +77,7 @@ interface AmazonPageWorker {
   stop(): Promise<void>;
 }
 
-type HomedepotDetailItem = {
-  OSMID: string;
-  link: string;
-  brandName?: string;
-  title: string;
-  price: string;
-  rate?: string;
-  reviewCount?: number;
-  mainImageUrl: string;
-  modelInfo?: string;
-};
-
-interface HomedepotEvents {
+export interface HomedepotEvents {
   /**
    * The event is fired when detail items collect
    */
@@ -136,7 +88,7 @@ interface HomedepotEvents {
   ['error']: { message: string; url?: string };
 }
 
-interface HomedepotWorker {
+export interface HomedepotWorker {
   /**
    * The channel for communication with the Homedepot page worker.
    */
@@ -145,10 +97,7 @@ interface HomedepotWorker {
   /**
    * Browsing goods detail page and collect target information
    */
-  runDetailPageTask(
-    OSMIDs: string[],
-    progress?: (remains: string[]) => Promise<void> | void,
-  ): Promise<void>;
+  runDetailPageTask(OSMIDs: string[], options?: LanchTaskBaseOptions): Promise<void>;
 
   /**
    * Stop the worker.
@@ -156,20 +105,7 @@ interface HomedepotWorker {
   stop(): Promise<void>;
 }
 
-type LowesDetailItem = {
-  OSMID: string;
-  link: string;
-  brandName?: string;
-  title: string;
-  price: string;
-  rate?: string;
-  innerText: string;
-  reviewCount?: number;
-  mainImageUrl: string;
-  modelInfo?: string;
-};
-
-interface LowesEvents {
+export interface LowesEvents {
   /**
    * The event is fired when detail items collect
    */
@@ -180,7 +116,7 @@ interface LowesEvents {
   ['error']: { message: string; url?: string };
 }
 
-interface LowesWorker {
+export interface LowesWorker {
   /**
    * The channel for communication with the Lowes page worker.
    */
@@ -189,10 +125,7 @@ interface LowesWorker {
   /**
    * Browsing goods detail page and collect target information
    */
-  runDetailPageTask(
-    urls: string[],
-    progress?: (remains: string[]) => Promise<void> | void,
-  ): Promise<void>;
+  runDetailPageTask(urls: string[], options?: LanchTaskBaseOptions): Promise<void>;
 
   /**
    * Stop the worker.

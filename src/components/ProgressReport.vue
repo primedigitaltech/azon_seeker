@@ -35,7 +35,7 @@ defineProps<{
   </n-card>
 </template>
 
-<style>
+<style scoped lang="scss">
 .progress-report {
   width: 100%;
   height: 100%;

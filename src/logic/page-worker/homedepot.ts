@@ -1,5 +1,5 @@
 import Emittery from 'emittery';
-import { HomedepotEvents, HomedepotWorker } from './types';
+import type { HomedepotEvents, HomedepotWorker, LanchTaskBaseOptions } from './types';
 import { Tabs } from 'webextension-polyfill';
 import { withErrorHandling } from '../error-handler';
 import { HomedepotDetailPageInjector } from '~/logic/web-injectors/homedepot';
@@ -12,7 +12,7 @@ class HomedepotWorkerImpl implements HomedepotWorker {
     }
     return HomedepotWorkerImpl._instance as HomedepotWorker;
   }
-  private constructor() {}
+  protected constructor() {}
 
   readonly channel: Emittery<HomedepotEvents> = new Emittery();
 
@@ -36,10 +36,8 @@ class HomedepotWorkerImpl implements HomedepotWorker {
     }, 1000);
   }
 
-  async runDetailPageTask(
-    OSMIDs: string[],
-    progress?: (remains: string[]) => Promise<void> | void,
-  ): Promise<void> {
+  async runDetailPageTask(OSMIDs: string[], options: LanchTaskBaseOptions = {}): Promise<void> {
+    const { progress } = options;
     const remains = [...OSMIDs];
     let interrupt = false;
     const unsubscribe = this._controlChannel.on('interrupt', () => {

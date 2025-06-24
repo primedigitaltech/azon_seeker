@@ -2,7 +2,6 @@
 import type { Timeline } from '~/components/ProgressReport.vue';
 import { useLongTask } from '~/composables/useLongTask';
 import { amazon as pageWorker } from '~/logic/page-worker';
-import type { AmazonReview } from '~/logic/page-worker/types';
 import { reviewAsinInput, reviewItems } from '~/logic/storages/amazon';
 
 const { isRunning, startTask } = useLongTask();
@@ -16,7 +15,7 @@ watch(isRunning, (newVal) => {
   newVal ? emit('start') : emit('stop');
 });
 
-const worker = pageWorker.useAmazonPageWorker();
+const worker = pageWorker.getAmazonPageWorker();
 worker.channel.on('error', ({ message: msg }) => {
   timelines.value.push({
     type: 'error',
@@ -52,8 +51,10 @@ const task = async () => {
       content: '开始数据采集',
     },
   ];
-  await worker.runReviewPageTask(asinList, async (remains) => {
-    reviewAsinInput.value = remains.join('\n');
+  await worker.runReviewPageTask(asinList, {
+    progress: (remains) => {
+      reviewAsinInput.value = remains.join('\n');
+    },
   });
   timelines.value.push({
     type: 'info',

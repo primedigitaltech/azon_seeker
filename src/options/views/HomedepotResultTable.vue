@@ -1,7 +1,7 @@
 <script setup lang="tsx">
 import type { TableColumn } from '~/components/ResultTable.vue';
 import { useCloudExporter } from '~/composables/useCloudExporter';
-import { castRecordsByHeaders, exportToXLSX, Header, importFromXLSX } from '~/logic/data-io';
+import { castRecordsByHeaders, exportToXLSX, Header, importFromXLSX } from '~/logic/excel';
 import { allItems } from '~/logic/storages/homedepot';
 
 const message = useMessage();

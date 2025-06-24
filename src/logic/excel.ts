@@ -9,7 +9,7 @@ class Worksheet {
     this.workbook = wb;
   }
 
-  async readJson(data: Record<string, unknown>[], options: { headers?: Header[] } = {}) {
+  async readJson(data: Record<string, unknown>[], options: { headers?: Header<any>[] } = {}) {
     const {
       headers = data.length > 0
         ? Object.keys(data[0]).map((k) => ({ label: k, prop: k }) as Header)
@@ -22,9 +22,9 @@ class Worksheet {
         const cols = headers.filter((h) => h.ignore?.out !== true);
         for (let j = 0; j < cols.length; j++) {
           const header = cols[j];
-          const value = getAttribute(item, header.prop);
+          const value = getAttribute(item, header.prop as string);
           if (header.formatOutputValue) {
-            record[header.label] = await header.formatOutputValue(value, i);
+            record[header.label] = await header.formatOutputValue(value, i, item);
           } else if (['string', 'number', 'bigint', 'boolean'].includes(typeof value)) {
             record[header.label] = value;
           } else {
@@ -76,7 +76,7 @@ class Worksheet {
             const value = header.parseImportValue
               ? await header.parseImportValue(item[header.label], i)
               : item[header.label];
-            setAttribute(mappedItem, header.prop, value);
+            setAttribute(mappedItem, header.prop as string, value);
           }
           return mappedItem;
         }),
@@ -172,11 +172,11 @@ function setAttribute(obj: Record<string, unknown>, path: string, value: unknown
   current[finalKey] = value;
 }
 
-export type Header = {
+export type Header<T = any> = {
   label: string;
-  prop: string;
+  prop: keyof T | string;
   parseImportValue?: (val: any, index: number) => any;
-  formatOutputValue?: (val: any, index: number) => any;
+  formatOutputValue?: (val: any, index: number, rowData: T) => any;
   ignore?: {
     in?: boolean;
     out?: boolean;
@@ -193,26 +193,26 @@ export type ImportBaseOptions = {
   headers?: Header[];
 };
 
-export function castRecordsByHeaders<T = Record<string, unknown>>(
+export function castRecordsByHeaders(
   jsonData: Record<string, unknown>[],
   headers: Omit<Header, 'parseImportValue'>[],
-): Promise<T[]> {
+): Promise<Record<string, unknown>[]> {
   return Promise.all(
     jsonData.map(async (item, i) => {
       const record: Record<string, unknown> = {};
       const cols = headers.filter((h) => h.ignore?.out !== true);
       for (let j = 0; j < cols.length; j++) {
         const header = cols[j];
-        const value = getAttribute(item, header.prop);
+        const value = getAttribute(item, header.prop as string);
         if (header.formatOutputValue) {
-          record[header.label] = await header.formatOutputValue(value, i);
+          record[header.label] = await header.formatOutputValue(value, i, item);
         } else if (['string', 'number', 'bigint', 'boolean'].includes(typeof value)) {
           record[header.label] = value;
         } else {
           record[header.label] = JSON.stringify(value);
         }
       }
-      return record as T;
+      return record;
     }),
   );
 }

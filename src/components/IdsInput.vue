@@ -82,20 +82,38 @@ defineExpose({
 
 <template>
   <div class="ids-input">
-    <n-space>
-      <n-button @click="fileDialog.open()" :disabled="disabled" round size="small">
-        <template #icon>
-          <gg-import />
-        </template>
-        导入
-      </n-button>
-      <n-button :disabled="disabled" @click="handleExportIds" round size="small">
-        <template #icon>
-          <ion-arrow-up-right-box-outline />
-        </template>
-        导出
-      </n-button>
-    </n-space>
+    <div class="header">
+      <span>
+        <n-button @click="fileDialog.open()" :disabled="disabled" round size="small">
+          <template #icon>
+            <n-icon>
+              <gg-import />
+            </n-icon>
+          </template>
+          导入
+        </n-button>
+        <n-button :disabled="disabled" @click="handleExportIds" round size="small">
+          <template #icon>
+            <n-icon>
+              <ion-arrow-up-right-box-outline />
+            </n-icon>
+          </template>
+          导出
+        </n-button>
+      </span>
+      <span>
+        <n-popover v-if="$slots['extra-settings']" placement="bottom-end" trigger="click">
+          <template #trigger>
+            <n-button :disabled="disabled" circle size="small">
+              <template #icon>
+                <n-icon size="18px"><solar-settings-linear /></n-icon>
+              </template>
+            </n-button>
+          </template>
+          <slot name="extra-settings" />
+        </n-popover>
+      </span>
+    </div>
     <div style="height: 7px" />
     <n-form-item ref="detail-form-item" label-placement="left" :rule="formItemRule">
       <n-input
@@ -109,10 +127,22 @@ defineExpose({
   </div>
 </template>
 
-<style lang="scss">
+<style scoped lang="scss">
 .asin-input {
   width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+
+  > *:first-of-type {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+  }
 }
 </style>

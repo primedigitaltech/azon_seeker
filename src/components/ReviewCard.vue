@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import type { AmazonReview } from '~/logic/page-worker/types';
-
 defineProps<{
   model: AmazonReview;
 }>();

@@ -1,5 +1,4 @@
 import { BaseInjector } from './base';
-import { AmazonReview, AmazonSearchItem } from '../page-worker/types';
 
 export class AmazonSearchPageInjector extends BaseInjector {
   public waitForPageLoaded() {
@@ -242,6 +241,7 @@ export class AmazonDetailPageInjector extends BaseInjector {
           /(?<="large":")https:\/\/m.media-amazon.com\/images\/I\/[\w\d\.\-+]+(?=")/g,
         );
       }
+      document.querySelector<HTMLElement>('header > [data-action="a-popover-close"]')?.click();
       return urls;
     });
   }
@@ -302,7 +302,10 @@ export class AmazonDetailPageInjector extends BaseInjector {
 
   public async scanAPlus() {
     return this.run(async () => {
-      const aplusEl = document.querySelector<HTMLElement>('#aplus')!;
+      const aplusEl = document.querySelector<HTMLElement>('#aplus_feature_div');
+      if (!aplusEl) {
+        return false;
+      }
       while (aplusEl.getClientRects().length === 0) {
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
@@ -315,7 +318,12 @@ export class AmazonDetailPageInjector extends BaseInjector {
         window.scrollBy({ top: 100, behavior: 'smooth' });
         await new Promise((resolve) => setTimeout(resolve, 100 + ~~(100 * Math.random())));
       }
+      return true;
     });
+  }
+
+  public async captureAPlus() {
+    return this.screenshot({ type: 'CSS', selector: '#aplus_feature_div' });
   }
 }
 

@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import type { AmazonDetailItem } from '~/logic/page-worker/types';
-
 defineProps<{ model: AmazonDetailItem }>();
 </script>
 
@@ -30,6 +28,9 @@ defineProps<{ model: AmazonDetailItem }>();
       </n-descriptions-item>
       <n-descriptions-item label="图片链接" :span="4">
         <image-link v-for="link in model.imageUrls" :url="link" />
+      </n-descriptions-item>
+      <n-descriptions-item v-if="model.aplus" label="A+" :span="4">
+        <image-link :url="model.aplus" />
       </n-descriptions-item>
     </n-descriptions>
   </div>

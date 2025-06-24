@@ -3,7 +3,7 @@ import { BaseInjector } from './base';
 
 export class LowesDetailPageInjector extends BaseInjector {
   constructor(tab: Tabs.Tab) {
-    super(tab, 60000);
+    super(tab, { timeout: 60000 });
   }
 
   public waitForPageLoad() {

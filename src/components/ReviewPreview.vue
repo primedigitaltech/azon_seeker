@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { useElementSize } from '@vueuse/core';
-import { exportToXLSX, Header, importFromXLSX } from '~/logic/data-io';
-import type { AmazonReview } from '~/logic/page-worker/types';
+import { exportToXLSX, Header, importFromXLSX } from '~/logic/excel';
 import { reviewItems } from '~/logic/storages/amazon';
 
 const props = defineProps<{ asin: string }>();

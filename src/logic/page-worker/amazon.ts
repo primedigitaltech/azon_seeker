@@ -1,5 +1,5 @@
 import Emittery from 'emittery';
-import type { AmazonDetailItem, AmazonPageWorker, AmazonPageWorkerEvents } from './types';
+import type { AmazonPageWorker, AmazonPageWorkerEvents, LanchTaskBaseOptions } from './types';
 import type { Tabs } from 'webextension-polyfill';
 import { withErrorHandling } from '../error-handler';
 import {
@@ -22,11 +22,11 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     }
     return this._instance;
   }
+  private constructor() {}
   //#endregion
 
-  private constructor() {}
-
   private readonly _controlChannel = new Emittery<{ interrupt: undefined }>();
+
   public readonly channel = new Emittery<AmazonPageWorkerEvents>();
 
   private async getCurrentTab(): Promise<Tabs.Tab> {
@@ -103,7 +103,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
   }
 
   @withErrorHandling
-  public async wanderDetailPage(entry: string) {
+  public async wanderDetailPage(entry: string, aplus: boolean = false) {
     //#region Initial Meta Info
     const params = { asin: '', url: '' };
     if (entry.match(/^https?:\/\/www\.amazon\.com.*\/dp\/[A-Z0-9]{10}/)) {
@@ -182,7 +182,10 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     //   });
     //#endregion
     // #region Get APlus Sreen shot
-    await injector.scanAPlus();
+    if (aplus && (await injector.scanAPlus())) {
+      const { b64: base64data } = await injector.captureAPlus();
+      this.channel.emit('item-aplus-screenshot-collect', { asin: params.asin, base64data });
+    }
     // #endregion
   }
 
@@ -212,8 +215,9 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
 
   public async runSearchPageTask(
     keywordsList: string[],
-    progress?: (remains: string[]) => Promise<void>,
+    options: LanchTaskBaseOptions = {},
   ): Promise<void> {
+    const { progress } = options;
     let remains = [...keywordsList];
     let interrupt = false;
     const unsubscribe = this._controlChannel.on('interrupt', () => {
@@ -230,8 +234,9 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
 
   public async runDetaiPageTask(
     asins: string[],
-    progress?: (remains: string[]) => Promise<void>,
+    options: LanchTaskBaseOptions & { aplus?: boolean } = {},
   ): Promise<void> {
+    const { progress, aplus = false } = options;
     const remains = [...asins];
     let interrupt = false;
     const unsubscribe = this._controlChannel.on('interrupt', () => {
@@ -239,7 +244,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     });
     while (remains.length > 0 && !interrupt) {
       const asin = remains.shift()!;
-      await this.wanderDetailPage(asin);
+      await this.wanderDetailPage(asin, aplus);
       progress && progress(remains);
     }
     unsubscribe();
@@ -247,8 +252,9 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
 
   public async runReviewPageTask(
     asins: string[],
-    progress?: (remains: string[]) => Promise<void>,
+    options: LanchTaskBaseOptions = {},
   ): Promise<void> {
+    const { progress } = options;
     const remains = [...asins];
     let interrupt = false;
     const unsubscribe = this._controlChannel.on('interrupt', () => {
@@ -268,7 +274,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
 }
 
 export default {
-  useAmazonPageWorker(): AmazonPageWorker {
+  getAmazonPageWorker(): AmazonPageWorker {
     return AmazonPageWorkerImpl.getInstance();
   },
 };

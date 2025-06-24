@@ -1,10 +1,9 @@
 import { Tabs } from 'webextension-polyfill';
 import { BaseInjector } from './base';
-import { HomedepotDetailItem } from '../page-worker/types';
 
 export class HomedepotDetailPageInjector extends BaseInjector {
   constructor(tab: Tabs.Tab) {
-    super(tab, 60000);
+    super(tab, { timeout: 60000 });
   }
 
   public waitForPageLoad() {

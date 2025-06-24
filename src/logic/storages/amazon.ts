@@ -1,10 +1,4 @@
 import { useWebExtensionStorage } from '~/composables/useWebExtensionStorage';
-import type {
-  AmazonDetailItem,
-  AmazonItem,
-  AmazonReview,
-  AmazonSearchItem,
-} from '~/logic/page-worker/types';
 
 export const keywordsList = useWebExtensionStorage<string[]>('keywordsList', ['']);
 
@@ -13,6 +7,11 @@ export const detailAsinInput = useWebExtensionStorage<string>('detailAsinInputTe
 export const reviewAsinInput = useWebExtensionStorage<string>('reviewAsinInputText', '');
 
 export const searchItems = useWebExtensionStorage<AmazonSearchItem[]>('searchItems', []);
+
+export const detailWorkerSettings = useWebExtensionStorage<{ aplus: boolean }>(
+  'amazon-detail-worker-settings',
+  { aplus: false },
+);
 
 export const detailItems = useWebExtensionStorage<Map<string, AmazonDetailItem>>(
   'detailItems',

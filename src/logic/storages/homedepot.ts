@@ -1,6 +1,4 @@
 import { useWebExtensionStorage } from '~/composables/useWebExtensionStorage';
-import { HomedepotDetailItem } from '../page-worker/types';
-
 export const detailItems = useWebExtensionStorage<Map<string, HomedepotDetailItem>>(
   'homedepot-details',
   new Map(),

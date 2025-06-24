@@ -2,8 +2,8 @@
 import type { Timeline } from '~/components/ProgressReport.vue';
 import { useLongTask } from '~/composables/useLongTask';
 import { amazon as pageWorker } from '~/logic/page-worker';
-import { AmazonDetailItem } from '~/logic/page-worker/types';
-import { detailAsinInput, detailItems } from '~/logic/storages/amazon';
+import { detailAsinInput, detailItems, detailWorkerSettings } from '~/logic/storages/amazon';
+import { uploadImage } from '~/logic/upload';
 
 const message = useMessage();
 
@@ -23,7 +23,7 @@ watch(isRunning, (newVal) => {
 const asinInputRef = useTemplateRef('asin-input');
 
 //#region Page Worker 初始化Code
-const worker = pageWorker.useAmazonPageWorker(); // 获取Page Worker单例
+const worker = pageWorker.getAmazonPageWorker(); // 获取Page Worker单例
 worker.channel.on('error', ({ message: msg }) => {
   timelines.value.push({
     type: 'error',
@@ -73,6 +73,18 @@ worker.channel.on('item-top-reviews-collected', (ev) => {
   });
   updateDetailItems(ev);
 });
+worker.channel.on('item-aplus-screenshot-collect', (ev) => {
+  timelines.value.push({
+    type: 'success',
+    title: `商品${ev.asin}A+`,
+    time: new Date().toLocaleString(),
+    content: `获取到A+`,
+  });
+  uploadImage(ev.base64data, `${ev.asin}.png`).then((url) => {
+    url && updateDetailItems({ asin: ev.asin, aplus: url });
+  });
+});
+
 const updateDetailItems = (row: { asin: string } & Partial<AmazonDetailItem>) => {
   const asin = row.asin;
   if (detailItems.value.has(row.asin)) {
@@ -94,8 +106,11 @@ const task = async () => {
       content: '开始数据采集',
     },
   ];
-  await worker.runDetaiPageTask(asinList, async (remains) => {
-    detailAsinInput.value = remains.join('\n');
+  await worker.runDetaiPageTask(asinList, {
+    progress: (remains) => {
+      detailAsinInput.value = remains.join('\n');
+    },
+    aplus: detailWorkerSettings.value.aplus,
   });
   timelines.value.push({
     type: 'info',
@@ -120,7 +135,17 @@ const handleInterrupt = () => {
   <div class="detail-page-entry">
     <header-title>Amazon Detail</header-title>
     <div class="interative-section">
-      <ids-input v-model="detailAsinInput" :disabled="isRunning" ref="asin-input" />
+      <ids-input v-model="detailAsinInput" :disabled="isRunning" ref="asin-input">
+        <template #extra-settings>
+          <div class="setting-panel">
+            <n-form label-placement="left">
+              <n-form-item label="Aplus: " :feedback-style="{ display: 'none' }">
+                <n-switch v-model:value="detailWorkerSettings.aplus" />
+              </n-form-item>
+            </n-form>
+          </div>
+        </template>
+      </ids-input>
       <n-button v-if="!isRunning" round size="large" type="primary" @click="handleStart">
         <template #icon>
           <ant-design-thunderbolt-outlined />
@@ -172,5 +197,9 @@ const handleInterrupt = () => {
 .progress-report {
   margin-top: 10px;
   width: 95%;
+}
+
+.setting-panel {
+  padding: 7px 10px;
 }
 </style>
