@@ -36,7 +36,7 @@ defineProps<{ model: AmazonDetailItem }>();
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped lang="scss">
 .review-item-footer {
   display: flex;
   flex-direction: row-reverse;

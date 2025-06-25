@@ -1,5 +1,4 @@
 import type { App } from 'vue';
-import { useAppContext } from '~/composables/useAppContext';
 import { router } from '~/router';
 
 /**
@@ -7,11 +6,9 @@ import { router } from '~/router';
  * @param app Vue app
  */
 export function setupApp(app: App) {
-  const { appContext: context } = useAppContext();
-
   // Inject a globally available `$app` object in template
   app.config.globalProperties.$app = {
-    context,
+    context: appContext,
   };
 
   // Provide access to `app` in script setup with `const app = inject('app')`

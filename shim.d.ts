@@ -17,7 +17,3 @@ declare module 'webext-bridge' {
     >;
   }
 }
-
-declare global {
-  type AppContext = 'options' | 'sidepanel';
-}

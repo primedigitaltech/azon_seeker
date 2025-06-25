@@ -10,7 +10,7 @@
   </a>
 </template>
 
-<style lang="scss" scoped>
+<style scoped lang="scss">
 .icon {
   display: block;
   color: #333;

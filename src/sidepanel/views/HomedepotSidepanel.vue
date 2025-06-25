@@ -81,7 +81,7 @@ const handleInterrupt = () => {
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped lang="scss">
 .homedepot-sidepanel {
   display: flex;
   flex-direction: column;

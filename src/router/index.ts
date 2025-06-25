@@ -5,10 +5,9 @@ import {
   createMemoryHistory,
   RouteRecordRaw,
 } from 'vue-router';
-import { useAppContext } from '~/composables/useAppContext';
 import { site } from '~/logic/storages/global';
 
-const routeObj: Record<AppContext, RouteRecordRaw[]> = {
+const routeObj: Record<'sidepanel' | 'options', RouteRecordRaw[]> = {
   options: [
     { path: '/', redirect: `/${site.value}` },
     { path: '/amazon', component: () => import('~/options/views/AmazonResultTable.vue') },
@@ -23,12 +22,17 @@ const routeObj: Record<AppContext, RouteRecordRaw[]> = {
 
 export const router: Plugin = {
   install(app) {
-    const { appContext: context } = useAppContext();
-    const routes = routeObj[context];
-    const router = createRouter({
-      history: context === 'sidepanel' ? createMemoryHistory() : createWebHashHistory(),
-      routes,
-    });
-    app.use(router);
+    switch (appContext) {
+      case 'sidepanel':
+      case 'options':
+        const routes = routeObj[appContext];
+        const router = createRouter({
+          history: appContext === 'sidepanel' ? createMemoryHistory() : createWebHashHistory(),
+          routes,
+        });
+        app.use(router);
+      default:
+        break;
+    }
   },
 };

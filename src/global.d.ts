@@ -9,6 +9,10 @@ declare module '*.vue' {
   export default component;
 }
 
+declare type AppContext = 'options' | 'sidepanel' | 'background' | 'content script';
+
+declare const appContext: AppContext;
+
 declare interface Chrome {
   sidePanel?: {
     setPanelBehavior: (options: { openPanelOnActionClick: boolean }) => void;

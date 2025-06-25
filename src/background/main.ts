@@ -11,6 +11,8 @@ if (import.meta.hot) {
   import('./contentScriptHMR');
 }
 
+Object.assign(self, { appContext: 'background' });
+
 // remove or turn this off if you don't use side panel
 const USE_SIDE_PANEL = true;
 

@@ -62,7 +62,7 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped lang="scss">
 .link-text {
   cursor: default;
   font-family: v-mono;

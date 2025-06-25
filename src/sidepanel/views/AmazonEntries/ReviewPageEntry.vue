@@ -111,7 +111,7 @@ const updateReviews = (params: { asin: string; reviews: AmazonReview[] }) => {
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped lang="scss">
 .review-page-entry {
   width: 100%;
   height: 100%;

@@ -370,7 +370,7 @@ const handleClearData = async () => {
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped lang="scss">
 .result-table {
   width: 100%;
 }

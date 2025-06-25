@@ -128,7 +128,7 @@ const handleInterrupt = () => {
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped lang="scss">
 .search-page-entry {
   width: 100%;
   display: flex;

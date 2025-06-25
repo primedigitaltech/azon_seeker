@@ -18,7 +18,7 @@ defineProps<{
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped lang="scss">
 .image-link-container {
   display: flex;
   flex-direction: column;

@@ -155,7 +155,7 @@ const handleExport = () => {
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped lang="scss">
 .review-list {
   display: flex;
   flex-direction: column;
