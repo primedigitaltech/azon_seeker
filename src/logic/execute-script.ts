@@ -1,3 +1,5 @@
+import { isFirefox } from '~/env';
+
 /**
  * Executes a provided asynchronous function in the context of a specific browser tab.
  * @param tabId - The ID of the browser tab where the script will be executed.
@@ -45,6 +47,15 @@ export async function exec<T, P extends Record<string, unknown>>(
 ): Promise<T> {
   const { timeout = 30000 } = options;
   return new Promise<T>(async (resolve, reject) => {
+    if (isFirefox) {
+      while (true) {
+        const tab = await browser.tabs.get(tabId);
+        if (tab.status === 'complete') {
+          break;
+        }
+        await new Promise<void>((r) => setTimeout(r, 100));
+      }
+    }
     setTimeout(() => reject('脚本运行超时'), timeout);
     try {
       const injectResults = await browser.scripting.executeScript({

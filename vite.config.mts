@@ -11,7 +11,7 @@ import Components from 'unplugin-vue-components/vite';
 import AutoImport from 'unplugin-auto-import/vite';
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
 
-import { isDev, port, r } from './scripts/utils';
+import { isDev, outputDir, port, r } from './scripts/utils';
 import packageJson from './package.json';
 
 export const sharedConfig: UserConfig = {
@@ -87,16 +87,18 @@ export default defineConfig(({ command }) => ({
       host: 'localhost',
     },
     origin: `http://localhost:${port}`,
+    cors: { origin: [/moz-extension:\/\/.+/] },
   },
   build: {
     watch: isDev ? {} : undefined,
-    outDir: r('extension/dist'),
+    outDir: r(`${outputDir}/dist`),
     emptyOutDir: false,
     sourcemap: isDev ? 'inline' : false,
     // https://developer.chrome.com/docs/webstore/program_policies/#:~:text=Code%20Readability%20Requirements
     terserOptions: {
       mangle: false,
     },
+    chunkSizeWarningLimit: 1024, // 1MB
     rollupOptions: {
       input: {
         sidepanel: r('src/sidepanel/index.html'),

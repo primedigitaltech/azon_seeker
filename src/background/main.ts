@@ -1,3 +1,5 @@
+import { isFirefox } from '~/env';
+
 // https://github.com/serversideup/webext-bridge/issues/67#issuecomment-2676094094
 import('webext-bridge/background');
 
@@ -13,22 +15,21 @@ if (import.meta.hot) {
 const USE_SIDE_PANEL = true;
 
 // to toggle the sidepanel with the action button in chromium:
-if (USE_SIDE_PANEL) {
-  // @ts-expect-error missing types
-  browser.sidePanel
-    .setPanelBehavior({ openPanelOnActionClick: true })
-    .catch((error: unknown) => console.error(error));
+if (USE_SIDE_PANEL && !isFirefox) {
+  (browser as unknown as Chrome).sidePanel?.setPanelBehavior({ openPanelOnActionClick: true });
 }
 
 browser.runtime.onInstalled.addListener(() => {
   // eslint-disable-next-line no-console
   console.log('Azon Seeker installed');
 
-  browser.contextMenus.create({
-    id: 'show-result',
-    title: '结果页',
-    contexts: ['action'],
-  });
+  if (USE_SIDE_PANEL && !isFirefox) {
+    browser.contextMenus.create({
+      id: 'show-result',
+      title: '结果页',
+      contexts: ['action'],
+    });
+  }
 });
 
 browser.contextMenus.onClicked.addListener((info) => {
