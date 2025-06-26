@@ -47,6 +47,8 @@ declare type AmazonSearchItem = {
 declare type AmazonDetailItem = {
   asin: string;
   title: string;
+  timestamp: string;
+  broughtInfo?: string;
   price?: string;
   rating?: number;
   ratingCount?: number;

@@ -1,26 +1,14 @@
 <script setup lang="ts">
 import { keywordsList } from '~/logic/storages/amazon';
-import { amazon as pageWorker } from '~/logic/page-worker';
-import { NButton } from 'naive-ui';
 import { searchItems } from '~/logic/storages/amazon';
-import { useLongTask } from '~/composables/useLongTask';
 import type { Timeline } from '~/components/ProgressReport.vue';
+import { usePageWorker } from '~/composables/usePageWorker';
 
 const message = useMessage();
-const { isRunning, startTask } = useLongTask();
-
-const emit = defineEmits<{
-  start: [];
-  stop: [];
-}>();
-
-watch(isRunning, (newVal) => {
-  newVal ? emit('start') : emit('stop');
-});
 
 //#region Initial Page Worker
-const worker = pageWorker.getAmazonPageWorker();
-worker.channel.on('error', ({ message: msg }) => {
+const worker = usePageWorker('amazon', { searchItems });
+worker.on('error', ({ message: msg }) => {
   timelines.value.push({
     type: 'error',
     title: '错误发生',
@@ -28,22 +16,20 @@ worker.channel.on('error', ({ message: msg }) => {
     content: msg,
   });
   message.error(msg);
-  worker.stop();
 });
-worker.channel.on('item-links-collected', ({ objs }) => {
+worker.on('item-links-collected', ({ objs }) => {
   timelines.value.push({
     type: 'success',
     title: '检测到数据',
     time: new Date().toLocaleString(),
     content: `成功采集到 ${objs.length} 条数据`,
   });
-  searchItems.value = searchItems.value.concat(objs); // Add records
 });
 //#endregion
 
 const timelines = ref<Timeline[]>([]);
 
-const task = async () => {
+const launch = async () => {
   const kws = unref(keywordsList);
   timelines.value = [
     {
@@ -79,11 +65,11 @@ const handleStart = async () => {
   if (keywordsList.value.length === 0) {
     return;
   }
-  startTask(task);
+  launch();
 };
 
 const handleInterrupt = () => {
-  if (!isRunning.value) return;
+  if (!worker.isRunning.value) return;
   worker.stop();
   message.info('已触发中断，正在等待当前任务完成。', { duration: 2000 });
 };
@@ -94,7 +80,7 @@ const handleInterrupt = () => {
     <header-title>Amazon Search</header-title>
     <div class="interactive-section">
       <n-dynamic-input
-        :disabled="isRunning"
+        :disabled="worker.isRunning.value"
         v-model:value="keywordsList"
         :min="1"
         :max="10"
@@ -104,7 +90,13 @@ const handleInterrupt = () => {
         round
         placeholder="请输入关键词采集信息"
       />
-      <n-button v-if="!isRunning" type="primary" round size="large" @click="handleStart">
+      <n-button
+        v-if="!worker.isRunning.value"
+        type="primary"
+        round
+        size="large"
+        @click="handleStart"
+      >
         <template #icon>
           <n-icon>
             <ant-design-thunderbolt-outlined />
@@ -121,7 +113,7 @@ const handleInterrupt = () => {
         中断
       </n-button>
     </div>
-    <div v-if="isRunning" class="running-tip-section">
+    <div v-if="worker.isRunning.value" class="running-tip-section">
       <n-alert title="Warning" type="warning"> 警告，在插件运行期间请勿与浏览器交互。 </n-alert>
     </div>
     <progress-report class="progress-report" :timelines="timelines" />

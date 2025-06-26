@@ -71,6 +71,7 @@ export const allItems = computed({
     const detailItemsProps: (keyof AmazonDetailItem)[] = [
       'asin',
       'title',
+      'timestamp',
       'price',
       'category1',
       'category2',
@@ -78,6 +79,7 @@ export const allItems = computed({
       'rating',
       'ratingCount',
       'topReviews',
+      'aplus',
     ];
     detailItems.value = newValue
       .filter((row) => row.hasDetail)

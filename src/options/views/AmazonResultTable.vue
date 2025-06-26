@@ -149,11 +149,12 @@ const extraHeaders: Header<AmazonItem>[] = [
   {
     prop: 'imageUrls',
     label: '商品图片链接',
-    formatOutputValue: (val: string[] | undefined, _i, rowData) => {
-      if (!val) return undefined;
-      return rowData.aplus ? val.concat([rowData.aplus]).join(';') : val.join(';');
-    },
+    formatOutputValue: (val?: string[]) => val?.join(';'),
     parseImportValue: (val?: string) => val?.split(';'),
+  },
+  {
+    prop: 'aplus',
+    label: 'A+截图',
   },
 ];
 
@@ -244,7 +245,7 @@ const handleCloudExport = async () => {
   const mappedData1 = await castRecordsByHeaders(items, itemHeaders);
   const mappedData2 = await castRecordsByHeaders(reviews, reviewHeaders);
   const fragments = [
-    { data: mappedData1, imageColumn: '商品图片链接', name: 'items' },
+    { data: mappedData1, imageColumn: ['商品图片链接', 'A+截图'], name: 'items' },
     { data: mappedData2, imageColumn: '图片链接', name: 'reviews' },
   ];
   const filename = await cloudExporter.doExport(fragments);

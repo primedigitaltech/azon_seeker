@@ -1,38 +1,24 @@
 <script lang="ts" setup>
 import type { Timeline } from '~/components/ProgressReport.vue';
-import { useLongTask } from '~/composables/useLongTask';
-import { amazon as pageWorker } from '~/logic/page-worker';
+import { usePageWorker } from '~/composables/usePageWorker';
 import { reviewAsinInput, reviewItems } from '~/logic/storages/amazon';
 
-const { isRunning, startTask } = useLongTask();
-
-const emit = defineEmits<{
-  start: [];
-  stop: [];
-}>();
-
-watch(isRunning, (newVal) => {
-  newVal ? emit('start') : emit('stop');
-});
-
-const worker = pageWorker.getAmazonPageWorker();
-worker.channel.on('error', ({ message: msg }) => {
+const worker = usePageWorker('amazon', { reviewItems });
+worker.on('error', ({ message: msg }) => {
   timelines.value.push({
     type: 'error',
     title: '错误发生',
     time: new Date().toLocaleString(),
     content: msg,
   });
-  worker.stop();
 });
-worker.channel.on('item-review-collected', (ev) => {
+worker.on('item-review-collected', (ev) => {
   timelines.value.push({
     type: 'success',
     title: `商品${ev.asin}评价`,
     time: new Date().toLocaleString(),
     content: `获取到 ${ev.reviews.length} 条评价`,
   });
-  updateReviews(ev);
 });
 
 const asinInputRef = useTemplateRef('asin-input');
@@ -41,7 +27,7 @@ const message = useMessage();
 
 const timelines = ref<Timeline[]>([]);
 
-const task = async () => {
+const launch = async () => {
   const asinList = reviewAsinInput.value.split(/\n|\s|,|;/).filter((item) => item.length > 0);
   timelines.value = [
     {
@@ -65,24 +51,12 @@ const task = async () => {
 };
 
 const handleStart = () => {
-  asinInputRef.value?.validate().then(async (success) => success && startTask(task));
+  asinInputRef.value?.validate().then(async (success) => success && launch());
 };
 
 const handleInterrupt = () => {
   worker.stop();
   message.info('已触发中断，正在等待当前任务完成。', { duration: 2000 });
-};
-
-const updateReviews = (params: { asin: string; reviews: AmazonReview[] }) => {
-  const { asin, reviews } = params;
-  const values = toRaw(reviewItems.value).get(asin) || [];
-  const ids = new Set(values.map((item) => item.id));
-  for (const review of reviews) {
-    ids.has(review.id) || values.push(review);
-  }
-  values.sort((a, b) => dayjs(b.dateInfo).valueOf() - dayjs(a.dateInfo).valueOf());
-  reviewItems.value.delete(asin);
-  reviewItems.value.set(asin, values);
 };
 </script>
 
@@ -90,8 +64,14 @@ const updateReviews = (params: { asin: string; reviews: AmazonReview[] }) => {
   <div class="review-page-entry">
     <header-title>Amazon Review</header-title>
     <div class="interative-section">
-      <ids-input v-model="reviewAsinInput" :disabled="isRunning" ref="asin-input" />
-      <n-button v-if="!isRunning" round size="large" type="primary" @click="handleStart">
+      <ids-input v-model="reviewAsinInput" :disabled="worker.isRunning.value" ref="asin-input" />
+      <n-button
+        v-if="!worker.isRunning.value"
+        round
+        size="large"
+        type="primary"
+        @click="handleStart"
+      >
         <template #icon>
           <ant-design-thunderbolt-outlined />
         </template>
@@ -104,7 +84,7 @@ const updateReviews = (params: { asin: string; reviews: AmazonReview[] }) => {
         停止
       </n-button>
     </div>
-    <div v-if="isRunning" class="running-tip-section">
+    <div v-if="worker.isRunning.value" class="running-tip-section">
       <n-alert title="Warning" type="warning"> 警告，在插件运行期间请勿与浏览器交互。 </n-alert>
     </div>
     <progress-report class="progress-report" :timelines="timelines" />

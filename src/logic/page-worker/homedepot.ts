@@ -1,10 +1,13 @@
-import Emittery from 'emittery';
 import type { HomedepotEvents, HomedepotWorker, LanchTaskBaseOptions } from './types';
 import { Tabs } from 'webextension-polyfill';
 import { withErrorHandling } from '../error-handler';
 import { HomedepotDetailPageInjector } from '~/logic/web-injectors/homedepot';
+import { BaseWorker } from './base';
 
-class HomedepotWorkerImpl implements HomedepotWorker {
+class HomedepotWorkerImpl
+  extends BaseWorker<HomedepotEvents & { interrupt: undefined }>
+  implements HomedepotWorker
+{
   private static _instance: HomedepotWorker | null = null;
   public static getInstance() {
     if (!HomedepotWorkerImpl._instance) {
@@ -12,11 +15,9 @@ class HomedepotWorkerImpl implements HomedepotWorker {
     }
     return HomedepotWorkerImpl._instance as HomedepotWorker;
   }
-  protected constructor() {}
-
-  readonly channel: Emittery<HomedepotEvents> = new Emittery();
-
-  private readonly _controlChannel = new Emittery<{ interrupt: undefined }>();
+  protected constructor() {
+    super();
+  }
 
   private async createNewTab(url?: string): Promise<Tabs.Tab> {
     const tab = await browser.tabs.create({ url, active: true });
@@ -30,7 +31,7 @@ class HomedepotWorkerImpl implements HomedepotWorker {
     const injector = new HomedepotDetailPageInjector(tab);
     await injector.waitForPageLoad();
     const info = await injector.getInfo();
-    this.channel.emit('detail-item-collected', { item: { OSMID, ...info } });
+    await this.emit('detail-item-collected', { item: { OSMID, ...info } });
     setTimeout(() => {
       browser.tabs.remove(tab.id!);
     }, 1000);
@@ -40,7 +41,7 @@ class HomedepotWorkerImpl implements HomedepotWorker {
     const { progress } = options;
     const remains = [...OSMIDs];
     let interrupt = false;
-    const unsubscribe = this._controlChannel.on('interrupt', () => {
+    const unsubscribe = this.on('interrupt', () => {
       interrupt = true;
     });
     while (remains.length > 0 && !interrupt) {
@@ -52,7 +53,7 @@ class HomedepotWorkerImpl implements HomedepotWorker {
   }
 
   stop(): Promise<void> {
-    return this._controlChannel.emit('interrupt');
+    return this.emit('interrupt');
   }
 }
 

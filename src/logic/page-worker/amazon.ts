@@ -1,4 +1,3 @@
-import Emittery from 'emittery';
 import type { AmazonPageWorker, AmazonPageWorkerEvents, LanchTaskBaseOptions } from './types';
 import type { Tabs } from 'webextension-polyfill';
 import { withErrorHandling } from '../error-handler';
@@ -8,12 +7,16 @@ import {
   AmazonSearchPageInjector,
 } from '~/logic/web-injectors/amazon';
 import { isForbiddenUrl } from '~/env';
+import { BaseWorker } from './base';
 
 /**
  * AmazonPageWorkerImpl can run on background & sidepanel & popup,
  *  **can't** run on content script!
  */
-class AmazonPageWorkerImpl implements AmazonPageWorker {
+class AmazonPageWorkerImpl
+  extends BaseWorker<AmazonPageWorkerEvents & { interrupt: undefined }>
+  implements AmazonPageWorker
+{
   //#region Singleton
   private static _instance: AmazonPageWorker | null = null;
   public static getInstance() {
@@ -22,12 +25,10 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     }
     return this._instance;
   }
-  private constructor() {}
+  protected constructor() {
+    super();
+  }
   //#endregion
-
-  private readonly _controlChannel = new Emittery<{ interrupt: undefined }>();
-
-  public readonly channel = new Emittery<AmazonPageWorkerEvents>();
 
   private async getCurrentTab(): Promise<Tabs.Tab> {
     const tab = await browser.tabs
@@ -55,7 +56,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     const hasNextPage = await injector.determineHasNextPage();
     await new Promise((resolve) => setTimeout(resolve, 1000));
     if (data === null || typeof hasNextPage !== 'boolean') {
-      this.channel.emit('error', { message: '爬取单页信息失败', url: tab.url });
+      this.emit('error', { message: '爬取单页信息失败', url: tab.url });
       throw new Error('爬取单页信息失败');
     }
     return { data, hasNextPage, page };
@@ -90,10 +91,10 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
         keywords,
         page,
         rank: offset + 1 + i,
-        createTime: new Date().toLocaleString(),
+        createTime: dayjs().format('YYYY/M/D HH:mm:ss'),
         asin: /(?<=\/dp\/)[A-Z0-9]{10}/.exec(r.link as string)![0],
       }));
-      this.channel.emit('item-links-collected', { objs });
+      this.emit('item-links-collected', { objs });
       offset += data.length;
       if (!hasNextPage) {
         break;
@@ -131,10 +132,11 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     //#region Fetch Base Info
     const baseInfo = await injector.getBaseInfo();
     const ratingInfo = await injector.getRatingInfo();
-    this.channel.emit('item-base-info-collected', {
+    await this.emit('item-base-info-collected', {
       asin: params.asin,
       ...baseInfo,
       ...ratingInfo,
+      timestamp: dayjs().format('YYYY/M/D HH:mm:ss'),
     });
     //#endregion
     //#region Fetch Category Rank Info
@@ -158,7 +160,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
           info['category2'] = { name, rank };
         }
       }
-      this.channel.emit('item-category-rank-collected', {
+      await this.emit('item-category-rank-collected', {
         asin: params.asin,
         ...info,
       });
@@ -167,16 +169,16 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     //#region Fetch Goods' Images
     const imageUrls = await injector.getImageUrls();
     imageUrls.length > 0 &&
-      this.channel.emit('item-images-collected', {
+      (await this.emit('item-images-collected', {
         asin: params.asin,
         imageUrls: Array.from(new Set(imageUrls)),
-      });
+      }));
     await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds.
     //#endregion
     //#region Fetch Top Reviews
     // const reviews = await injector.getTopReviews();
     // reviews.length > 0 &&
-    //   this.channel.emit('item-top-reviews-collected', {
+    //   await this.emit('item-top-reviews-collected', {
     //     asin: params.asin,
     //     topReviews: reviews,
     //   });
@@ -184,7 +186,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     // #region Get APlus Sreen shot
     if (aplus && (await injector.scanAPlus())) {
       const { b64: base64data } = await injector.captureAPlus();
-      this.channel.emit('item-aplus-screenshot-collect', { asin: params.asin, base64data });
+      await this.emit('item-aplus-screenshot-collect', { asin: params.asin, base64data });
     }
     // #endregion
   }
@@ -203,7 +205,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
       while (true) {
         await injector.waitForPageLoad();
         const reviews = await injector.getSinglePageReviews();
-        reviews.length > 0 && this.channel.emit('item-review-collected', { asin, reviews });
+        reviews.length > 0 && this.emit('item-review-collected', { asin, reviews });
         const hasNextPage = await injector.jumpToNextPageIfExist();
         if (!hasNextPage) {
           break;
@@ -220,7 +222,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     const { progress } = options;
     let remains = [...keywordsList];
     let interrupt = false;
-    const unsubscribe = this._controlChannel.on('interrupt', () => {
+    const unsubscribe = this.on('interrupt', () => {
       interrupt = true;
     });
     while (remains.length > 0 && !interrupt) {
@@ -232,14 +234,14 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     unsubscribe();
   }
 
-  public async runDetaiPageTask(
+  public async runDetailPageTask(
     asins: string[],
     options: LanchTaskBaseOptions & { aplus?: boolean } = {},
   ): Promise<void> {
     const { progress, aplus = false } = options;
     const remains = [...asins];
     let interrupt = false;
-    const unsubscribe = this._controlChannel.on('interrupt', () => {
+    const unsubscribe = this.on('interrupt', () => {
       interrupt = true;
     });
     while (remains.length > 0 && !interrupt) {
@@ -257,7 +259,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
     const { progress } = options;
     const remains = [...asins];
     let interrupt = false;
-    const unsubscribe = this._controlChannel.on('interrupt', () => {
+    const unsubscribe = this.on('interrupt', () => {
       interrupt = true;
     });
     while (remains.length > 0 && !interrupt) {
@@ -269,7 +271,7 @@ class AmazonPageWorkerImpl implements AmazonPageWorker {
   }
 
   public stop(): Promise<void> {
-    return this._controlChannel.emit('interrupt');
+    return this.emit('interrupt');
   }
 }
 

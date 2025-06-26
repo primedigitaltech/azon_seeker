@@ -2,6 +2,7 @@
 import DetailPageEntry from './AmazonEntries/DetailPageEntry.vue';
 import SearchPageEntry from './AmazonEntries/SearchPageEntry.vue';
 import ReviewPageEntry from './AmazonEntries/ReviewPageEntry.vue';
+import { usePageWorker } from '~/composables/usePageWorker';
 
 const tabs = [
   {
@@ -24,21 +25,21 @@ const currentComponent = computed(() => {
   return tab ? tab.component : null;
 });
 
-const running = ref(false);
+const worker = usePageWorker('amazon');
 </script>
 
 <template>
   <div class="side-panel">
     <header class="header-menu">
       <n-tabs
-        :tab-style="{ cursor: running ? 'not-allowed' : undefined }"
+        :tab-style="{ cursor: worker.isRunning.value ? 'not-allowed' : undefined }"
         placement="top"
         :default-value="tabs[0].name"
         type="segment"
         :value="selectedTab"
         @update:value="
           (val) => {
-            if (!running && tabs.findIndex((t) => t.name === val) !== -1) {
+            if (!worker.isRunning.value && tabs.findIndex((t) => t.name === val) !== -1) {
               selectedTab = val;
             }
           }
@@ -49,7 +50,7 @@ const running = ref(false);
     </header>
     <main class="main-content">
       <keep-alive>
-        <Component :is="currentComponent" @start="running = true" @stop="running = false" />
+        <Component :is="currentComponent" />
       </keep-alive>
     </main>
   </div>

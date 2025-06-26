@@ -87,7 +87,7 @@ class ExportExcelPipeline {
 
 export type DataFragment = {
   data: Array<Record<string, any>>;
-  imageColumn?: string;
+  imageColumn?: string | string[];
   name?: string;
 };
 

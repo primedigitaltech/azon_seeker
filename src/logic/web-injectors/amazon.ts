@@ -168,7 +168,10 @@ export class AmazonDetailPageInjector extends BaseInjector {
       const price = document.querySelector<HTMLElement>(
         '.aok-offscreen, .a-price:not(.a-text-price) .a-offscreen',
       )?.innerText;
-      return { title, price };
+      const broughtInfo = document.querySelector<HTMLElement>(
+        `#social-proofing-faceout-title-tk_bought`,
+      )?.innerText;
+      return { title, price, broughtInfo };
     });
   }
 
@@ -303,7 +306,11 @@ export class AmazonDetailPageInjector extends BaseInjector {
   public async scanAPlus() {
     return this.run(async () => {
       const aplusEl = document.querySelector<HTMLElement>('#aplus_feature_div');
-      if (!aplusEl) {
+      if (
+        !aplusEl ||
+        aplusEl.getClientRects().length === 0 ||
+        aplusEl.getClientRects()[0].height === 0
+      ) {
         return false;
       }
       while (aplusEl.getClientRects().length === 0) {

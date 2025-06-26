@@ -1,5 +1,7 @@
 import type Emittery from 'emittery';
 
+type Listener<T> = Pick<Emittery<T>, 'on' | 'off' | 'once'>;
+
 export type LanchTaskBaseOptions = { progress?: (remains: string[]) => Promise<void> | void };
 
 export interface AmazonPageWorkerEvents {
@@ -12,7 +14,7 @@ export interface AmazonPageWorkerEvents {
    */
   ['item-base-info-collected']: Pick<
     AmazonDetailItem,
-    'asin' | 'title' | 'price' | 'rating' | 'ratingCount'
+    'asin' | 'title' | 'broughtInfo' | 'price' | 'rating' | 'ratingCount' | 'timestamp'
   >;
   /**
    * The event is fired when worker
@@ -40,13 +42,7 @@ export interface AmazonPageWorkerEvents {
   ['error']: { message: string; url?: string };
 }
 
-export interface AmazonPageWorker {
-  /**
-   * The channel for communication with the Amazon page worker.
-   * This is an instance of Emittery, which allows for event-based communication.
-   */
-  readonly channel: Emittery<AmazonPageWorkerEvents>;
-
+export interface AmazonPageWorker extends Listener<AmazonPageWorkerEvents> {
   /**
    * Browsing goods search page and collect links to those goods.
    * @param keywordsList - The keywords list to search for on Amazon.
@@ -59,7 +55,7 @@ export interface AmazonPageWorker {
    * @param asins Amazon Standard Identification Numbers.
    * @param options The Options Specify Behaviors.
    */
-  runDetaiPageTask(
+  runDetailPageTask(
     asins: string[],
     options?: LanchTaskBaseOptions & { aplus?: boolean },
   ): Promise<void>;
@@ -88,12 +84,7 @@ export interface HomedepotEvents {
   ['error']: { message: string; url?: string };
 }
 
-export interface HomedepotWorker {
-  /**
-   * The channel for communication with the Homedepot page worker.
-   */
-  readonly channel: Emittery<HomedepotEvents>;
-
+export interface HomedepotWorker extends Listener<HomedepotEvents> {
   /**
    * Browsing goods detail page and collect target information
    */
