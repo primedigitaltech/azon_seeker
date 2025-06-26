@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { Timeline } from '~/components/ProgressReport.vue';
-import { usePageWorker } from '~/composables/usePageWorker';
+import { usePageWorker } from '~/page-worker';
 import { reviewAsinInput, reviewItems } from '~/logic/storages/amazon';
 
 const worker = usePageWorker('amazon', { reviewItems });

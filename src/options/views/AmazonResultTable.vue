@@ -84,7 +84,7 @@ const columns: TableColumn[] = [
     hidden: true,
   },
   {
-    title: '创建日期',
+    title: '获取日期',
     key: 'createTime',
     minWidth: 160,
   },
@@ -146,6 +146,7 @@ const extraHeaders: Header<AmazonItem>[] = [
   { prop: 'category1.rank', label: '大类排行' },
   { prop: 'category2.name', label: '小类' },
   { prop: 'category2.rank', label: '小类排行' },
+  { prop: 'timestamp', label: '获取日期（详情页）' },
   {
     prop: 'imageUrls',
     label: '商品图片链接',

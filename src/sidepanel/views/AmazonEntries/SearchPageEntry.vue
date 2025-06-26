@@ -2,7 +2,7 @@
 import { keywordsList } from '~/logic/storages/amazon';
 import { searchItems } from '~/logic/storages/amazon';
 import type { Timeline } from '~/components/ProgressReport.vue';
-import { usePageWorker } from '~/composables/usePageWorker';
+import { usePageWorker } from '~/page-worker';
 
 const message = useMessage();
 

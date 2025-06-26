@@ -50,7 +50,7 @@ const columns: TableColumn[] = [
   },
   {
     title: '操作',
-    key: 'action',
+    key: 'actions',
     render(row: (typeof allItems.value)[0]) {
       return (
         <n-space>

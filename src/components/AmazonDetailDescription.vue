@@ -5,8 +5,11 @@ defineProps<{ model: AmazonDetailItem }>();
 <template>
   <div class="detail-description">
     <n-descriptions label-placement="left" bordered :column="4" label-style="min-width: 100px">
-      <n-descriptions-item label="ASIN" :span="2">
+      <n-descriptions-item label="ASIN">
         {{ model.asin }}
+      </n-descriptions-item>
+      <n-descriptions-item label="获取日期">
+        {{ model.timestamp }}
       </n-descriptions-item>
       <n-descriptions-item label="评价">
         {{ model.rating || '-' }}

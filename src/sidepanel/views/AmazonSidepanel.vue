@@ -2,7 +2,7 @@
 import DetailPageEntry from './AmazonEntries/DetailPageEntry.vue';
 import SearchPageEntry from './AmazonEntries/SearchPageEntry.vue';
 import ReviewPageEntry from './AmazonEntries/ReviewPageEntry.vue';
-import { usePageWorker } from '~/composables/usePageWorker';
+import { usePageWorker } from '~/page-worker';
 
 const tabs = [
   {

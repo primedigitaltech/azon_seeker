@@ -1,6 +1,7 @@
-import { amazon } from '~/logic/page-worker';
+import amazon from './amazon';
+import homedepot from './homedepot';
 import { uploadImage } from '~/logic/upload';
-import { useLongTask } from './useLongTask';
+import { useLongTask } from '~/composables/useLongTask';
 
 export interface AmazonPageWorkerSettings {
   searchItems?: Ref<AmazonSearchItem[]>;
@@ -9,7 +10,7 @@ export interface AmazonPageWorkerSettings {
   commitChangeIngerval?: number;
 }
 
-class PageWorkerFactory {
+class AmazonPageWorkerFactory {
   public amazonWorker: ReturnType<typeof this.buildAmazonPageWorker> | null = null;
 
   public amazonWorkerSettings: AmazonPageWorkerSettings = {};
@@ -160,11 +161,112 @@ class PageWorkerFactory {
   }
 }
 
-const facotry = new PageWorkerFactory();
+export interface HomedepotWorkerSettings {
+  detailItems?: Ref<Map<string, HomedepotDetailItem>>;
+  commitChangeIngerval?: number;
+}
 
-export function usePageWorker(type: 'amazon', settings?: AmazonPageWorkerSettings) {
-  if (type === 'amazon') {
-    return facotry.loadAmazonPageWorker(settings);
+class HomedepotWorkerFactory {
+  public homedepotWorkerSettings: HomedepotWorkerSettings = {};
+
+  public homedepotWorker: ReturnType<typeof this.buildHomedepotWorker> | null = null;
+
+  public buildHomedepotWorker() {
+    const worker = homedepot.getHomedepotWorker();
+    const { isRunning, startTask } = useLongTask();
+
+    const detailCache = new Map<string, HomedepotDetailItem>();
+
+    const unsubscribeFuncs = [] as (() => void)[];
+
+    onMounted(() => {
+      unsubscribeFuncs.push(
+        ...[
+          worker.on('error', () => {
+            worker.stop();
+          }),
+          worker.on('detail-item-collected', (ev) => {
+            const { item } = ev;
+            if (detailCache.has(item.OSMID)) {
+              const origin = detailCache.get(item.OSMID);
+              detailCache.set(item.OSMID, { ...origin, ...item });
+            } else {
+              detailCache.set(item.OSMID, item);
+            }
+          }),
+        ],
+      );
+    });
+
+    onUnmounted(() => {
+      unsubscribeFuncs.forEach((unsubscribe) => unsubscribe());
+      unsubscribeFuncs.splice(0, unsubscribeFuncs.length);
+    });
+
+    const commitChange = () => {
+      const { detailItems } = this.homedepotWorkerSettings;
+      if (typeof detailItems !== 'undefined') {
+        for (const [k, v] of detailCache.entries()) {
+          detailItems.value.delete(k); // Trigger update
+          detailItems.value.set(k, v);
+        }
+        detailCache.clear();
+      }
+    };
+
+    const taskWrapper = <T extends (...params: any) => any>(func: T) => {
+      const { commitChangeIngerval = 1500 } = this.homedepotWorkerSettings;
+      return (...params: Parameters<T>) =>
+        startTask(async () => {
+          const interval = setInterval(() => commitChange(), commitChangeIngerval);
+          await func(...params);
+          clearInterval(interval);
+          commitChange();
+        });
+    };
+
+    const runDetailPageTask = taskWrapper(worker.runDetailPageTask.bind(worker));
+
+    return {
+      isRunning,
+      runDetailPageTask,
+      on: worker.on.bind(worker),
+      off: worker.off.bind(worker),
+      once: worker.once.bind(worker),
+      stop: worker.stop.bind(worker),
+    };
   }
-  throw new Error(`Unsupported page worker type: ${type}`);
+
+  loadHomedepotWorker(settings?: HomedepotWorkerSettings) {
+    if (settings) {
+      this.homedepotWorkerSettings = { ...this.homedepotWorkerSettings, ...settings };
+    }
+    if (!this.homedepotWorker) {
+      this.homedepotWorker = this.buildHomedepotWorker();
+    }
+    return this.homedepotWorker;
+  }
+}
+
+const amazonfacotry = new AmazonPageWorkerFactory();
+
+const homedepotfactory = new HomedepotWorkerFactory();
+
+export function usePageWorker(
+  type: 'amazon',
+  settings?: AmazonPageWorkerSettings,
+): ReturnType<typeof amazonfacotry.loadAmazonPageWorker>;
+export function usePageWorker(
+  type: 'homedepot',
+  settings?: HomedepotWorkerSettings,
+): ReturnType<typeof homedepotfactory.loadHomedepotWorker>;
+export function usePageWorker(type: 'amazon' | 'homedepot', settings?: any) {
+  switch (type) {
+    case 'amazon':
+      return amazonfacotry.loadAmazonPageWorker(settings);
+    case 'homedepot':
+      return homedepotfactory.loadHomedepotWorker(settings);
+    default:
+      throw new Error(`Unsupported page worker type: ${type}`);
+  }
 }

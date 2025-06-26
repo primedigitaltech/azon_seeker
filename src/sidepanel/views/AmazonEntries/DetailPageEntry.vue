@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Timeline } from '~/components/ProgressReport.vue';
-import { usePageWorker } from '~/composables/usePageWorker';
+import { usePageWorker } from '~/page-worker';
 import { detailAsinInput, detailItems, detailWorkerSettings } from '~/logic/storages/amazon';
 
 const message = useMessage();
