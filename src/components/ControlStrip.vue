@@ -65,7 +65,7 @@ const emit = defineEmits<{
         </template>
         导出
       </n-button>
-      <n-popover v-if="$slots.filter" trigger="hover" placement="bottom">
+      <n-popover v-if="$slots.filter" trigger="hover" placement="bottom" :duration="500">
         <template #trigger>
           <n-button type="default" ghost :round="round" :size="size">
             <template #icon>

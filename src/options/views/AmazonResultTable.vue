@@ -9,36 +9,16 @@ const message = useMessage();
 const modal = useModal();
 const cloudExporter = useCloudExporter();
 
-const defaultFilter = {
-  keywords: undefined as string | undefined,
-  search: '',
-  detailOnly: false,
-};
-const filter = reactive(defaultFilter);
-const filterFormItems = computed(() => {
-  const records = allItems.value;
-  return [
-    {
-      prop: 'keywords',
-      label: '关键词',
-      type: 'select',
-      params: {
-        options: [
-          ...records.reduce((o, c) => {
-            c.keywords && o.add(c.keywords);
-            return o;
-          }, new Set<string>()),
-        ].map((opt) => ({
-          label: opt,
-          value: opt,
-        })),
-      },
-    },
-  ];
-});
+const filter = ref<{
+  keywords?: string;
+  search?: string;
+  detailOnly?: boolean;
+  searchDateRange?: [number, number];
+  detailDateRange?: [number, number];
+}>({});
 
 const onFilterReset = () => {
-  Object.assign(filter, defaultFilter);
+  filter.value = {};
 };
 
 const columns: TableColumn[] = [
@@ -108,7 +88,7 @@ const columns: TableColumn[] = [
                     width: '80vw',
                     height: '85vh',
                   },
-                  content: () => <review-preview asin={asin} />,
+                  content: () => <amazon-review-preview asin={asin} />,
                 });
               },
             },
@@ -190,9 +170,9 @@ const getItemHeaders = () => {
 };
 
 const filteredData = computed(() => {
-  const { search, detailOnly, keywords } = filter;
+  const { search, detailOnly, keywords, searchDateRange, detailDateRange } = filter.value;
   let data = toRaw(allItems.value);
-  if (search.trim() !== '') {
+  if (search && search.trim() !== '') {
     data = data.filter((r) => {
       return [r.title, r.asin, r.keywords].some((field) =>
         field?.toLowerCase().includes(search.toLowerCase()),
@@ -204,6 +184,20 @@ const filteredData = computed(() => {
   }
   if (keywords) {
     data = data.filter((r) => r.keywords === keywords);
+  }
+  if (searchDateRange) {
+    const start = dayjs(searchDateRange[0]);
+    const end = dayjs(searchDateRange[1]);
+    data = data.filter(
+      (r) => dayjs(r.createTime).diff(start) >= 0 && dayjs(r.createTime).diff(end) <= 0,
+    );
+  }
+  if (detailDateRange) {
+    const start = dayjs(detailDateRange[0]);
+    const end = dayjs(detailDateRange[1]);
+    data = data.filter(
+      (r) => dayjs(r.createTime).diff(start) >= 0 && dayjs(r.timestamp).diff(end) <= 0,
+    );
   }
   return data;
 });
@@ -351,14 +345,40 @@ const handleClearData = async () => {
             <template #filter>
               <div class="filter-section">
                 <div class="filter-title">筛选器</div>
-                <n-form :model="filter" label-placement="left">
-                  <n-form-item v-for="item in filterFormItems" :label="item.label">
+                <n-form
+                  :model="filter"
+                  label-placement="left"
+                  label-align="center"
+                  label-width="100"
+                >
+                  <n-form-item label="关键词">
                     <n-select
-                      v-if="item.type === 'select'"
                       placeholder=""
                       v-model:value="filter.keywords"
                       clearable
-                      :options="item.params.options"
+                      :options="
+                          Array.from(allItems.reduce((o, c) => {
+                              c.keywords && o.add(c.keywords);
+                              return o;
+                            }, new Set<string>()),
+                          ).map((opt) => ({
+                            label: opt,
+                            value: opt,
+                          }))"
+                    />
+                  </n-form-item>
+                  <n-form-item label="日期(搜索页)">
+                    <n-date-picker
+                      type="daterange"
+                      clearable
+                      v-model:value="filter.searchDateRange"
+                    />
+                  </n-form-item>
+                  <n-form-item label="日期(详情页)">
+                    <n-date-picker
+                      type="daterange"
+                      clearable
+                      v-model:value="filter.detailDateRange"
                     />
                   </n-form-item>
                 </n-form>
@@ -425,7 +445,7 @@ const handleClearData = async () => {
 }
 
 .filter-section {
-  min-width: 250px;
+  max-width: 360px;
 
   .filter-title {
     font-size: 18px;

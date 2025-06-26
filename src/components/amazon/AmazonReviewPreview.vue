@@ -129,7 +129,7 @@ const handleExport = () => {
     <n-scrollbar :style="{ maxHeight: `${height * 0.85}px`, minHeight: `${height * 0.85}px` }">
       <div class="review-list-container" :style="{ minHeight: `${height * 0.8}px` }">
         <template v-if="view.data.length > 0" v-for="review in view.data">
-          <review-card :model="review" />
+          <amazon-review-card :model="review" />
           <div style="height: 7px" />
         </template>
         <template v-else>

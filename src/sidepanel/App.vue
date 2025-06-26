@@ -3,6 +3,7 @@ import type { GlobalThemeOverrides } from 'naive-ui';
 import { useRouter } from 'vue-router';
 import { useCurrentUrl } from '~/composables/useCurrentUrl';
 import { site } from '~/logic/storages/global';
+import { zhCN, dateZhCN } from 'naive-ui';
 
 const theme: GlobalThemeOverrides = {
   common: {
@@ -37,7 +38,7 @@ watch(currentUrl, (newVal) => {
 
 <template>
   <!-- Naive UI Wrapper-->
-  <n-config-provider :theme-overrides="theme">
+  <n-config-provider :locale="zhCN" :date-locale="dateZhCN" :theme-overrides="theme">
     <n-loading-bar-provider>
       <n-message-provider>
         <n-dialog-provider>

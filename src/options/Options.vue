@@ -6,8 +6,8 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 
 const options: { label: string; value: 'amazon' | 'homedepot' }[] = [
-  { label: 'Amazon', value: 'amazon' },
-  { label: 'Homedepot', value: 'homedepot' },
+  { label: 'Amazon Search&Detail', value: 'amazon' },
+  { label: 'Homedepot Detail', value: 'homedepot' },
 ];
 
 watch(site, (newVal) => {
