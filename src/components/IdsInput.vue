@@ -27,7 +27,7 @@ const formItemRule: FormItemRule = {
   trigger: ['submit'],
   message: props.validateMessage,
   validator: () => {
-    return props.matchPattern.exec(modelValue.value) !== null;
+    return props.matchPattern && props.matchPattern.exec(modelValue.value) !== null;
   },
 };
 

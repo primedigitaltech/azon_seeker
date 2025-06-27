@@ -6,6 +6,10 @@ export const detailAsinInput = useWebExtensionStorage<string>('detailAsinInputTe
 
 export const reviewAsinInput = useWebExtensionStorage<string>('reviewAsinInputText', '');
 
+export const itemColumnSettings = useWebExtensionStorage<
+  Set<keyof Pick<AmazonItem, 'keywords' | 'page' | 'rank' | 'createTime' | 'timestamp'>>
+>('itemColumnSettings', new Set(['keywords', 'page', 'rank', 'createTime']));
+
 export const searchItems = useWebExtensionStorage<AmazonSearchItem[]>('searchItems', []);
 
 export const detailWorkerSettings = useWebExtensionStorage<{ aplus: boolean }>(

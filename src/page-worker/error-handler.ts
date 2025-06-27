@@ -1,5 +1,5 @@
 export interface ErrorChannelContainer {
-  emit: (event: 'error', error: { message: string }) => void;
+  emit: (event: 'error', error: { message: string }) => Promise<void>;
 }
 
 /**
@@ -16,7 +16,7 @@ export function withErrorHandling(
     try {
       return await originalMethod.call(this, ...args); // 调用原有方法
     } catch (error) {
-      this.emit('error', { message: `发生未知错误：${error}` });
+      await this.emit('error', { message: `发生未知错误：${error}` });
       throw error;
     }
   };

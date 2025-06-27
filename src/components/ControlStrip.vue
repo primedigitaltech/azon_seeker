@@ -76,6 +76,17 @@ const emit = defineEmits<{
         </template>
         <slot name="filter" />
       </n-popover>
+      <n-popover v-if="$slots.settings" trigger="hover" placement="bottom" :duration="500">
+        <template #trigger>
+          <n-button type="default" ghost :round="round" :size="size">
+            <template #icon>
+              <solar-settings-linear />
+            </template>
+            设置
+          </n-button>
+        </template>
+        <slot name="settings" />
+      </n-popover>
     </n-button-group>
   </div>
 </template>

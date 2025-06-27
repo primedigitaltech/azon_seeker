@@ -47,10 +47,9 @@ class AmazonPageWorkerFactory {
           worker.on('item-top-reviews-collected', (ev) => {
             updateDetailCache(ev);
           }),
-          worker.on('item-aplus-screenshot-collect', (ev) => {
-            uploadImage(ev.base64data, `${ev.asin}.png`).then((url) => {
-              url && updateDetailCache({ asin: ev.asin, aplus: url });
-            });
+          worker.on('item-aplus-screenshot-collect', async (ev) => {
+            const url = await uploadImage(ev.base64data, `${ev.asin}.png`);
+            url && updateDetailCache({ asin: ev.asin, aplus: url });
           }),
           worker.on('item-review-collected', (ev) => {
             updateReviews(ev);
@@ -92,14 +91,12 @@ class AmazonPageWorkerFactory {
       const { searchItems, detailItems, reviewItems } = this.amazonWorkerSettings;
       if (typeof searchItems !== 'undefined') {
         searchItems.value = searchItems.value.concat(searchCache);
-        searchCache.splice(0, searchCache.length);
       }
       if (typeof detailItems !== 'undefined') {
         for (const [k, v] of detailCache.entries()) {
           detailItems.value.delete(k); // Trigger update
           detailItems.value.set(k, v);
         }
-        detailCache.clear();
       }
       if (typeof reviewItems !== 'undefined') {
         for (const [asin, reviews] of reviewCache.entries()) {
@@ -116,12 +113,11 @@ class AmazonPageWorkerFactory {
             reviewItems.value.set(asin, reviews);
           }
         }
-        reviewCache.clear();
       }
     };
 
     const taskWrapper = <T extends (...params: any) => any>(func: T) => {
-      const { commitChangeIngerval = 1500 } = this.amazonWorkerSettings;
+      const { commitChangeIngerval = 10000 } = this.amazonWorkerSettings;
       searchCache.splice(0, searchCache.length);
       detailCache.clear();
       reviewCache.clear();
@@ -215,7 +211,7 @@ class HomedepotWorkerFactory {
     };
 
     const taskWrapper = <T extends (...params: any) => any>(func: T) => {
-      const { commitChangeIngerval = 1500 } = this.homedepotWorkerSettings;
+      const { commitChangeIngerval = 10000 } = this.homedepotWorkerSettings;
       return (...params: Parameters<T>) =>
         startTask(async () => {
           const interval = setInterval(() => commitChange(), commitChangeIngerval);
@@ -249,7 +245,6 @@ class HomedepotWorkerFactory {
 }
 
 const amazonfacotry = new AmazonPageWorkerFactory();
-
 const homedepotfactory = new HomedepotWorkerFactory();
 
 export function usePageWorker(

@@ -23,12 +23,13 @@ export async function uploadImage(
   formData.append('file', blob, filename);
 
   const url = `http://${remoteHost}/upload/image/${encodeURIComponent(filename)}`;
-  return fetch(url, {
+  const resp = (await fetch(url, {
     method: 'POST',
     body: formData,
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      return data.file ? `http://${remoteHost}${data.file}` : undefined;
-    });
+  }).catch((err) => undefined)) as Response | undefined;
+  if (!resp) {
+    return undefined;
+  }
+  const data = await resp.json();
+  return `http://${remoteHost}${data.file}`;
 }

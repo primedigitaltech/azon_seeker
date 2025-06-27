@@ -26,14 +26,14 @@ export class BaseInjector {
     }
   }
 
-  protected async screenshot(params: ProtocolMap['html-to-image']['data']) {
+  protected async screenshot(
+    params: ProtocolMap['html-to-image']['data'],
+  ): Promise<ProtocolMap['html-to-image']['return']> {
     const sender = await this.getMessageSender();
-    return Promise.resolve<ProtocolMap['html-to-image']['return']>(
-      sender.sendMessage('html-to-image', params, {
-        context: 'content-script',
-        tabId: this._tab.id!,
-      }),
-    );
+    return sender!.sendMessage('html-to-image', params, {
+      context: 'content-script',
+      tabId: this._tab.id!,
+    });
   }
 
   protected run<T, P extends Record<string, unknown>>(

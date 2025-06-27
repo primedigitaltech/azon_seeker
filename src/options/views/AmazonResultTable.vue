@@ -3,7 +3,7 @@ import { NButton, NSpace } from 'naive-ui';
 import type { TableColumn } from '~/components/ResultTable.vue';
 import { useCloudExporter } from '~/composables/useCloudExporter';
 import { castRecordsByHeaders, createWorkbook, Header, importFromXLSX } from '~/logic/excel';
-import { allItems, reviewItems } from '~/logic/storages/amazon';
+import { allItems, itemColumnSettings, reviewItems } from '~/logic/storages/amazon';
 
 const message = useMessage();
 const modal = useModal();
@@ -21,96 +21,108 @@ const onFilterReset = () => {
   filter.value = {};
 };
 
-const columns: TableColumn[] = [
-  {
-    type: 'expand',
-    expandable: (row) => row.hasDetail,
-    renderExpand(row) {
-      return <amazon-detail-description model={row} />;
+const columns = computed<TableColumn[]>(() => {
+  return [
+    {
+      type: 'expand',
+      expandable: (row) => row.hasDetail,
+      renderExpand(row) {
+        return <amazon-detail-description model={row} />;
+      },
     },
-  },
-  {
-    title: '关键词',
-    key: 'keywords',
-    minWidth: 120,
-  },
-  {
-    title: '页码',
-    key: 'page',
-    minWidth: 60,
-  },
-  {
-    title: '排位',
-    key: 'rank',
-    minWidth: 60,
-  },
-  {
-    title: 'ASIN',
-    key: 'asin',
-    minWidth: 130,
-  },
-  {
-    title: '标题',
-    key: 'title',
-  },
-  {
-    title: '价格',
-    key: 'price',
-    minWidth: 100,
-  },
-  {
-    title: '封面图',
-    key: 'imageSrc',
-    hidden: true,
-  },
-  {
-    title: '获取日期',
-    key: 'createTime',
-    minWidth: 160,
-  },
-  {
-    title: '查看',
-    key: 'actions',
-    minWidth: 100,
-    render(row) {
-      return (
-        <n-space>
-          {[
-            {
-              text: '评论',
-              disabled: !reviewItems.value.has(row.asin),
-              onClick: () => {
-                const asin = row.asin;
-                modal.create({
-                  title: `${asin}评论`,
-                  preset: 'card',
-                  style: {
-                    width: '80vw',
-                    height: '85vh',
-                  },
-                  content: () => <amazon-review-preview asin={asin} />,
-                });
-              },
-            },
-            {
-              text: '链接',
-              onClick: () => {
-                browser.tabs.create({
-                  active: true,
-                  url: row.link,
-                });
-              },
-            },
-          ].map(({ text, onClick, disabled }) => (
-            <n-button type="primary" text size="small" disabled={disabled} onClick={onClick}>
-              {text}
-            </n-button>
-          ))}
-        </n-space>
-      );
+    {
+      title: '关键词',
+      key: 'keywords',
+      minWidth: 120,
+      hidden: !itemColumnSettings.value.has('keywords'),
     },
-  },
-];
+    {
+      title: '页码',
+      key: 'page',
+      minWidth: 60,
+      hidden: !itemColumnSettings.value.has('page'),
+    },
+    {
+      title: '排位',
+      key: 'rank',
+      minWidth: 60,
+      hidden: !itemColumnSettings.value.has('rank'),
+    },
+    {
+      title: 'ASIN',
+      key: 'asin',
+      minWidth: 130,
+    },
+    {
+      title: '标题',
+      key: 'title',
+    },
+    {
+      title: '价格',
+      key: 'price',
+      minWidth: 100,
+    },
+    {
+      title: '封面图',
+      key: 'imageSrc',
+      hidden: true,
+    },
+    {
+      title: '获取日期',
+      key: 'createTime',
+      minWidth: 160,
+      hidden: !itemColumnSettings.value.has('createTime'),
+    },
+    {
+      title: '获取日期（详情页）',
+      key: 'timestamp',
+      minWidth: 160,
+      hidden: !itemColumnSettings.value.has('timestamp'),
+    },
+    {
+      title: '查看',
+      key: 'actions',
+      minWidth: 100,
+      render(row) {
+        return (
+          <n-space>
+            {[
+              {
+                text: '评论',
+                disabled: !reviewItems.value.has(row.asin),
+                onClick: () => {
+                  const asin = row.asin;
+                  modal.create({
+                    title: `${asin}评论`,
+                    preset: 'card',
+                    style: {
+                      width: '80vw',
+                      height: '85vh',
+                    },
+                    content: () => <amazon-review-preview asin={asin} />,
+                  });
+                },
+              },
+              {
+                text: '链接',
+                onClick: () => {
+                  browser.tabs.create({
+                    active: true,
+                    url: row.link,
+                  });
+                },
+              },
+            ].map(({ text, onClick, disabled }) => (
+              <n-button type="primary" text size="small" disabled={disabled} onClick={onClick}>
+                {text}
+              </n-button>
+            ))}
+          </n-space>
+        );
+      },
+    },
+  ];
+});
 
 const extraHeaders: Header<AmazonItem>[] = [
   { prop: 'link', label: '商品链接' },
@@ -155,7 +167,7 @@ const reviewHeaders: Header<AmazonReview>[] = [
 ];
 
 const getItemHeaders = () => {
-  return columns
+  return columns.value
     .filter((col: Record<string, any>) => col.key !== 'actions')
     .reduce(
       (p, v: Record<string, any>) => {
@@ -240,7 +252,7 @@ const handleCloudExport = async () => {
   const mappedData1 = await castRecordsByHeaders(items, itemHeaders);
   const mappedData2 = await castRecordsByHeaders(reviews, reviewHeaders);
   const fragments = [
-    { data: mappedData1, imageColumn: ['商品图片链接', 'A+截图'], name: 'items' },
+    { data: mappedData1, imageColumn: ['A+截图', '商品图片链接'], name: 'items' },
     { data: mappedData2, imageColumn: '图片链接', name: 'reviews' },
   ];
   const filename = await cloudExporter.doExport(fragments);
@@ -369,17 +381,31 @@ const handleClearData = async () => {
                   </n-form-item>
                   <n-form-item label="日期(搜索页)">
                     <n-date-picker
-                      type="daterange"
+                      type="datetimerange"
                       clearable
                       v-model:value="filter.searchDateRange"
                     />
                   </n-form-item>
                   <n-form-item label="日期(详情页)">
                     <n-date-picker
-                      type="daterange"
+                      type="datetimerange"
                       clearable
                       v-model:value="filter.detailDateRange"
                     />
+                  </n-form-item>
+                  <n-form-item label="列筛选">
+                    <n-checkbox-group
+                      :value="Array.from(itemColumnSettings)"
+                      @update:value="(val) => (itemColumnSettings = new Set(val) as any)"
+                    >
+                      <n-space item-style="display: flex;">
+                        <n-checkbox value="keywords" label="关键词" />
+                        <n-checkbox value="page" label="页码" />
+                        <n-checkbox value="rank" label="排位" />
+                        <n-checkbox value="createTime" label="获取日期" />
+                        <n-checkbox value="timestamp" label="获取日期（详情）" />
+                      </n-space>
+                    </n-checkbox-group>
                   </n-form-item>
                 </n-form>
                 <div class="filter-footer" @click="onFilterReset"><n-button>重置</n-button></div>
@@ -445,7 +471,7 @@ const handleClearData = async () => {
 }
 
 .filter-section {
-  max-width: 360px;
+  max-width: 500px;
 
   .filter-title {
     font-size: 18px;

@@ -47,13 +47,11 @@ export async function exec<T, P extends Record<string, unknown>>(
 ): Promise<T> {
   const { timeout = 30000 } = options;
   return new Promise<T>(async (resolve, reject) => {
-    if (isFirefox) {
-      while (true) {
-        await new Promise<void>((r) => setTimeout(r, 200));
-        const tab = await browser.tabs.get(tabId);
-        if (tab.status === 'complete') {
-          break;
-        }
+    while (true) {
+      await new Promise<void>((r) => setTimeout(r, 200));
+      const tab = await browser.tabs.get(tabId);
+      if (tab.status === 'complete') {
+        break;
       }
     }
     setTimeout(() => reject('脚本运行超时'), timeout);
