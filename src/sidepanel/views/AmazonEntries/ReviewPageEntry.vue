@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import type { Timeline } from '~/components/ProgressReport.vue';
 import { usePageWorker } from '~/page-worker';
-import { reviewAsinInput, reviewItems } from '~/logic/storages/amazon';
+import { reviewAsinInput } from '~/storages/amazon';
 
-const worker = usePageWorker('amazon', { reviewItems });
+const worker = usePageWorker('amazon', { objects: ['review'] });
 worker.on('error', ({ message: msg }) => {
   timelines.value.push({
     type: 'error',

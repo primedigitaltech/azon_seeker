@@ -11,10 +11,22 @@ export class HomedepotDetailPageInjector extends BaseInjector {
       let timeout = false;
       setTimeout(() => (timeout = true), 15000);
       const isLoaded = () => {
-        const reviewPlaceholderEl = document.querySelector(
-          `#product-section-rr div[role='button'][aria-expanded='true']`,
+        const reviewSuffix = document.evaluate(
+          `//*[@id='product-section-rr']//p/text()[starts-with(., ' out of 5')]`,
+          document,
+          null,
+          XPathResult.STRING_TYPE,
         );
-        return reviewPlaceholderEl && (document.readyState == 'complete' || timeout);
+        const writeFirstReviewButton = document.evaluate(
+          `//section[@id='product-section-ratings-reviews']//span[starts-with(text(), 'Write the First Review')]`,
+          document,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+        );
+        return (
+          (!!writeFirstReviewButton.singleNodeValue || !!reviewSuffix.stringValue) &&
+          (document.readyState == 'complete' || timeout)
+        );
       };
       while (true) {
         await new Promise((resolve) => setTimeout(resolve, 500 + ~~(Math.random() * 500)));

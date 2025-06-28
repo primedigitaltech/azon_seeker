@@ -1,4 +1,6 @@
-import { isFirefox } from '~/env';
+type ExecOptions = {
+  timeout?: number;
+};
 
 /**
  * Executes a provided asynchronous function in the context of a specific browser tab.
@@ -6,6 +8,7 @@ import { isFirefox } from '~/env';
  * @param func - The asynchronous function to execute in the tab's context. This function
  *               should be serializable and must not rely on external closures.
  * @param payload - An optional payload object to pass as an argument to the executed function.
+ * @param options - The options apply to execute
  *
  * @returns A promise that resolves to the result of the executed function, or `null` if an error occurs.
  *
@@ -23,10 +26,6 @@ import { isFirefox } from '~/env';
  * console.log(result); // Outputs: 42
  * ```
  */
-type ExecOptions = {
-  timeout?: number;
-};
-
 export async function exec<T>(
   tabId: number,
   func: () => Promise<T>,

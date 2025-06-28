@@ -1,8 +1,8 @@
 <script setup lang="tsx">
 import type { TableColumn } from '~/components/ResultTable.vue';
 import { useCloudExporter } from '~/composables/useCloudExporter';
-import { castRecordsByHeaders, exportToXLSX, Header, importFromXLSX } from '~/logic/excel';
-import { allItems } from '~/logic/storages/homedepot';
+import { formatRecords, exportToXLSX, Header, importFromXLSX } from '~/logic/excel';
+import { allItems } from '~/storages/homedepot';
 
 const message = useMessage();
 const cloudExporter = useCloudExporter();
@@ -11,10 +11,12 @@ const columns: TableColumn[] = [
   {
     title: 'OSMID',
     key: 'OSMID',
+    minWidth: 100,
   },
   {
     title: '品牌名称',
     key: 'brandName',
+    minWidth: 120,
   },
   {
     title: '型号信息',
@@ -27,6 +29,7 @@ const columns: TableColumn[] = [
   {
     title: '价格',
     key: 'price',
+    minWidth: 80,
   },
   {
     title: '评分',
@@ -110,7 +113,7 @@ const handleLocalExport = async () => {
 const handleCloudExport = async () => {
   message.warning('正在导出，请勿关闭当前页面！', { duration: 2000 });
   const itemHeaders = getItemHeaders();
-  const mappedData = await castRecordsByHeaders(filteredData.value, itemHeaders);
+  const mappedData = await formatRecords(filteredData.value, itemHeaders);
   const fragments = [{ data: mappedData, imageColumn: '主图链接' }];
   const filename = await cloudExporter.doExport(fragments);
   filename && message.info(`导出完成`);

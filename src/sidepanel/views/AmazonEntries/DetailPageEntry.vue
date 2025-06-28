@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Timeline } from '~/components/ProgressReport.vue';
 import { usePageWorker } from '~/page-worker';
-import { detailAsinInput, detailItems, detailWorkerSettings } from '~/logic/storages/amazon';
+import { detailAsinInput, detailWorkerSettings } from '~/storages/amazon';
 
 const message = useMessage();
 
@@ -10,7 +10,7 @@ const timelines = ref<Timeline[]>([]);
 const asinInputRef = useTemplateRef('asin-input');
 
 //#region Page Worker 初始化Code
-const worker = usePageWorker('amazon', { detailItems });
+const worker = usePageWorker('amazon', { objects: ['detail'] });
 worker.on('error', ({ message: msg }) => {
   timelines.value.push({
     type: 'error',

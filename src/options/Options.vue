@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router';
-import { site } from '~/logic/storages/global';
+import { site } from '~/storages/global';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
-const options: { label: string; value: 'amazon' | 'homedepot' }[] = [
-  { label: 'Amazon Search&Detail', value: 'amazon' },
-  { label: 'Homedepot Detail', value: 'homedepot' },
+const options: { label: string; value: string }[] = [
+  { label: 'Amazon', value: 'amazon' },
+  { label: 'Amazon Review', value: 'amazon-reviews' },
+  { label: 'Homedepot', value: 'homedepot' },
 ];
 
-watch(site, (newVal) => {
-  router.push(`/${newVal}`);
+watch(site, (val) => {
+  router.push(val);
 });
 </script>
 

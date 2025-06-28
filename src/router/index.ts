@@ -5,12 +5,13 @@ import {
   createMemoryHistory,
   RouteRecordRaw,
 } from 'vue-router';
-import { site } from '~/logic/storages/global';
+import { site } from '~/storages/global';
 
 const routeObj: Record<'sidepanel' | 'options', RouteRecordRaw[]> = {
   options: [
     { path: '/', redirect: `/${site.value}` },
     { path: '/amazon', component: () => import('~/options/views/AmazonResultTable.vue') },
+    { path: '/amazon-reviews', component: () => import('~/options/views/AmazonReviews.vue') },
     { path: '/homedepot', component: () => import('~/options/views/HomedepotResultTable.vue') },
   ],
   sidepanel: [

@@ -33,6 +33,32 @@ export const reviewItems = useWebExtensionStorage<Map<string, AmazonReview[]>>(
   },
 );
 
+export const allReviews = computed({
+  get() {
+    const reviews: ({ asin: string } & AmazonReview)[] = [];
+    for (const [asin, values] of reviewItems.value) {
+      for (const review of values) {
+        reviews.push({ asin, ...review });
+      }
+    }
+    return reviews;
+  },
+  set(newVal) {
+    const reviews = newVal.reduce<Map<string, AmazonReview[]>>((m, r) => {
+      if (!m.has(r.asin)) {
+        m.set(r.asin, []);
+      }
+      const reviews = m.get(r.asin)!;
+      reviews.push(r);
+      return m;
+    }, new Map());
+    for (const [_, values] of reviews) {
+      values.sort((a, b) => dayjs(b.dateInfo).diff(a.dateInfo));
+    }
+    reviewItems.value = reviews;
+  },
+});
+
 export const allItems = computed({
   get() {
     const sItems = unref(searchItems);

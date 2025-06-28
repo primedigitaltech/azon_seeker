@@ -2,7 +2,7 @@
 import type { GlobalThemeOverrides } from 'naive-ui';
 import { useRouter } from 'vue-router';
 import { useCurrentUrl } from '~/composables/useCurrentUrl';
-import { site } from '~/logic/storages/global';
+import { site } from '~/storages/global';
 import { zhCN, dateZhCN } from 'naive-ui';
 
 const theme: GlobalThemeOverrides = {

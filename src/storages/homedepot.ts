@@ -1,4 +1,7 @@
 import { useWebExtensionStorage } from '~/composables/useWebExtensionStorage';
+
+export const detailInputText = useWebExtensionStorage('homedepot-detail-input-text', '');
+
 export const detailItems = useWebExtensionStorage<Map<string, HomedepotDetailItem>>(
   'homedepot-details',
   new Map(),

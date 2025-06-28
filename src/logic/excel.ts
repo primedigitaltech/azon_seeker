@@ -52,7 +52,7 @@ class Worksheet {
     };
   }
 
-  async toJson<T>(options: { headers?: Header[] } = {}) {
+  async toJson<T = Record<string, unknown>>(options: { headers?: Header[] } = {}) {
     const { headers } = options;
 
     let jsonData: Record<string, unknown>[] = [];
@@ -113,8 +113,11 @@ class Workbook {
     this._wb = await this._wb.xlsx.load(bf);
   }
 
-  getSheet(index: number): Worksheet | undefined {
-    const ws = this._wb.getWorksheet(index + 1); // Align the index
+  getSheet(indexOrName: number | string): Worksheet | undefined {
+    if (typeof indexOrName === 'number') {
+      indexOrName += 1; // Align the index
+    }
+    const ws = this._wb.getWorksheet(indexOrName);
     return ws ? new Worksheet(ws, this) : undefined;
   }
 
@@ -193,7 +196,7 @@ export type ImportBaseOptions = {
   headers?: Header[];
 };
 
-export function castRecordsByHeaders(
+export function formatRecords(
   jsonData: Record<string, unknown>[],
   headers: Omit<Header, 'parseImportValue'>[],
 ): Promise<Record<string, unknown>[]> {

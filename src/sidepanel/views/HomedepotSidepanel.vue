@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { Timeline } from '~/components/ProgressReport.vue';
 import { usePageWorker } from '~/page-worker';
-import { detailItems } from '~/logic/storages/homedepot';
 
 const inputText = ref('');
 const idInputRef = useTemplateRef('id-input');
 
-const worker = usePageWorker('homedepot', { detailItems });
+const worker = usePageWorker('homedepot', { objects: ['detail'] });
 worker.on('detail-item-collected', ({ item }) => {
   timelines.value.push({
     type: 'success',

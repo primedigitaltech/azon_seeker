@@ -2,8 +2,8 @@
 import { NButton, NSpace } from 'naive-ui';
 import type { TableColumn } from '~/components/ResultTable.vue';
 import { useCloudExporter } from '~/composables/useCloudExporter';
-import { castRecordsByHeaders, createWorkbook, Header, importFromXLSX } from '~/logic/excel';
-import { allItems, itemColumnSettings, reviewItems } from '~/logic/storages/amazon';
+import { formatRecords, createWorkbook, Header, importFromXLSX } from '~/logic/excel';
+import { allItems, itemColumnSettings, reviewItems } from '~/storages/amazon';
 
 const message = useMessage();
 const modal = useModal();
@@ -138,7 +138,6 @@ const extraHeaders: Header<AmazonItem>[] = [
   { prop: 'category1.rank', label: '大类排行' },
   { prop: 'category2.name', label: '小类' },
   { prop: 'category2.rank', label: '小类排行' },
-  { prop: 'timestamp', label: '获取日期（详情页）' },
   {
     prop: 'imageUrls',
     label: '商品图片链接',
@@ -249,8 +248,8 @@ const handleCloudExport = async () => {
       a.push(...reviews.map((r) => ({ asin, ...r })));
       return a;
     }, []);
-  const mappedData1 = await castRecordsByHeaders(items, itemHeaders);
-  const mappedData2 = await castRecordsByHeaders(reviews, reviewHeaders);
+  const mappedData1 = await formatRecords(items, itemHeaders);
+  const mappedData2 = await formatRecords(reviews, reviewHeaders);
   const fragments = [
     { data: mappedData1, imageColumn: ['A+截图', '商品图片链接'], name: 'items' },
     { data: mappedData2, imageColumn: '图片链接', name: 'reviews' },
@@ -393,10 +392,10 @@ const handleClearData = async () => {
                       v-model:value="filter.detailDateRange"
                     />
                   </n-form-item>
-                  <n-form-item label="列筛选">
+                  <n-form-item label="列展示">
                     <n-checkbox-group
                       :value="Array.from(itemColumnSettings)"
-                      @update:value="(val) => (itemColumnSettings = new Set(val) as any)"
+                      @update:value="(val: any) => (itemColumnSettings = new Set(val) as any)"
                     >
                       <n-space item-style="display: flex;">
                         <n-checkbox value="keywords" label="关键词" />

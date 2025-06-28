@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { keywordsList } from '~/logic/storages/amazon';
-import { searchItems } from '~/logic/storages/amazon';
+import { keywordsList } from '~/storages/amazon';
 import type { Timeline } from '~/components/ProgressReport.vue';
 import { usePageWorker } from '~/page-worker';
 
 const message = useMessage();
 
 //#region Initial Page Worker
-const worker = usePageWorker('amazon', { searchItems });
+const worker = usePageWorker('amazon', { objects: ['search'] });
 worker.on('error', ({ message: msg }) => {
   timelines.value.push({
     type: 'error',
