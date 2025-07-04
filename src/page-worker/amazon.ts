@@ -192,10 +192,12 @@ class AmazonPageWorkerImpl
   }
 
   @withErrorHandling
-  public async wanderReviewPage(asin: string) {
+  public async wanderReviewPage(asin: string, options: { recent?: boolean } = {}) {
+    const { recent } = options;
     const url = new URL(
       `https://www.amazon.com/product-reviews/${asin}/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews`,
     );
+    recent && url.searchParams.set('sortBy', 'recent');
     const tab = await this.createNewTab(url.toString());
     const injector = new AmazonReviewPageInjector(tab);
     await injector.waitForPageLoad();
@@ -254,7 +256,7 @@ class AmazonPageWorkerImpl
 
   public async runReviewPageTask(
     asins: string[],
-    options: LanchTaskBaseOptions = {},
+    options: LanchTaskBaseOptions & { recent?: boolean } = {},
   ): Promise<void> {
     const { progress } = options;
     const remains = [...asins];
@@ -264,7 +266,7 @@ class AmazonPageWorkerImpl
     });
     while (remains.length > 0 && !interrupt) {
       const asin = remains.shift()!;
-      await this.wanderReviewPage(asin);
+      await this.wanderReviewPage(asin, options);
       progress && progress(remains);
     }
     unsubscribe();

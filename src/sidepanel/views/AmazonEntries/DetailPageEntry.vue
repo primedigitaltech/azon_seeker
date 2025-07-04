@@ -47,14 +47,14 @@ worker.on('item-images-collected', (ev) => {
     content: `图片数： ${ev.imageUrls!.length}`,
   });
 });
-worker.on('item-top-reviews-collected', (ev) => {
-  timelines.value.push({
-    type: 'success',
-    title: `商品${ev.asin}精选评论`,
-    time: new Date().toLocaleString(),
-    content: `精选评论数： ${ev.topReviews!.length}`,
-  });
-});
+// worker.on('item-top-reviews-collected', (ev) => {
+//   timelines.value.push({
+//     type: 'success',
+//     title: `商品${ev.asin}精选评论`,
+//     time: new Date().toLocaleString(),
+//     content: `精选评论数： ${ev.topReviews!.length}`,
+//   });
+// });
 worker.on('item-aplus-screenshot-collect', (ev) => {
   timelines.value.push({
     type: 'success',
@@ -108,7 +108,7 @@ const handleInterrupt = () => {
         <template #extra-settings>
           <div class="setting-panel">
             <n-form label-placement="left">
-              <n-form-item label="Aplus: " :feedback-style="{ display: 'none' }">
+              <n-form-item label="Aplus:" :feedback-style="{ display: 'none' }">
                 <n-switch v-model:value="detailWorkerSettings.aplus" />
               </n-form-item>
             </n-form>

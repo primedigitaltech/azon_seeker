@@ -1,13 +1,12 @@
 <script setup lang="tsx">
 import { NButton, NSpace } from 'naive-ui';
 import type { TableColumn } from '~/components/ResultTable.vue';
-import { useCloudExporter } from '~/composables/useCloudExporter';
-import { formatRecords, createWorkbook, Header, importFromXLSX } from '~/logic/excel';
-import { allItems, itemColumnSettings, reviewItems } from '~/storages/amazon';
+import { useExcelHelper } from '~/composables/useExcelHelper';
+import { Header } from '~/logic/excel';
+import { allDetailItems, allItems, itemColumnSettings, reviewItems } from '~/storages/amazon';
 
-const message = useMessage();
 const modal = useModal();
-const cloudExporter = useCloudExporter();
+const excelHelper = useExcelHelper();
 
 const filter = ref<{
   keywords?: string;
@@ -132,6 +131,7 @@ const extraHeaders: Header<AmazonItem>[] = [
     formatOutputValue: (val: boolean) => (val ? '是' : '否'),
     parseImportValue: (val: string) => val === '是',
   },
+  { prop: 'broughtInfo', label: '销量信息' },
   { prop: 'rating', label: '评分' },
   { prop: 'ratingCount', label: '评论数' },
   { prop: 'category1.name', label: '大类' },
@@ -147,21 +147,6 @@ const extraHeaders: Header<AmazonItem>[] = [
   {
     prop: 'aplus',
     label: 'A+截图',
-  },
-];
-
-const reviewHeaders: Header<AmazonReview>[] = [
-  { prop: 'asin', label: 'ASIN' },
-  { prop: 'username', label: '用户名' },
-  { prop: 'title', label: '标题' },
-  { prop: 'rating', label: '评分' },
-  { prop: 'content', label: '内容' },
-  { prop: 'dateInfo', label: '日期' },
-  {
-    prop: 'imageSrc',
-    label: '图片链接',
-    formatOutputValue: (val?: string[]) => val?.join(';'),
-    parseImportValue: (val?: string) => val?.split(';'),
   },
 ];
 
@@ -182,16 +167,13 @@ const getItemHeaders = () => {
 
 const filteredData = computed(() => {
   const { search, detailOnly, keywords, searchDateRange, detailDateRange } = filter.value;
-  let data = toRaw(allItems.value);
+  let data = toRaw(detailOnly ? allDetailItems.value : allItems.value);
   if (search && search.trim() !== '') {
     data = data.filter((r) => {
       return [r.title, r.asin, r.keywords].some((field) =>
         field?.toLowerCase().includes(search.toLowerCase()),
       );
     });
-  }
-  if (detailOnly) {
-    data = data.filter((r) => r.hasDetail);
   }
   if (keywords) {
     data = data.filter((r) => r.keywords === keywords);
@@ -213,81 +195,28 @@ const filteredData = computed(() => {
   return data;
 });
 
-const handleLocalExport = async () => {
-  const itemHeaders = getItemHeaders();
+const handleExport = async (opt: 'local' | 'cloud') => {
+  const headers = getItemHeaders();
   const items = toRaw(filteredData.value);
-  const asins = new Set(items.map((e) => e.asin));
-  const reviews = toRaw(reviewItems.value)
-    .entries()
-    .filter(([asin]) => asins.has(asin))
-    .reduce<(AmazonReview & { asin: string })[]>((a, [asin, reviews]) => {
-      a.push(...reviews.map((r) => ({ asin, ...r })));
-      return a;
-    }, []);
-
-  const wb = createWorkbook();
-  const sheet1 = wb.addSheet('items');
-  await sheet1.readJson(items, { headers: itemHeaders });
-  const sheet2 = wb.addSheet('reviews');
-  await sheet2.readJson(reviews, { headers: reviewHeaders });
-  await wb.exportFile(`Items ${dayjs().format('YYYY-MM-DD')}.xlsx`);
-
-  message.info('导出完成');
-};
-
-const handleCloudExport = async () => {
-  message.warning('正在导出，请勿关闭当前页面！', { duration: 2000 });
-
-  const itemHeaders = getItemHeaders();
-  const items = toRaw(filteredData.value);
-  const asins = new Set(items.map((e) => e.asin));
-  const reviews = toRaw(reviewItems.value)
-    .entries()
-    .filter(([asin]) => asins.has(asin))
-    .reduce<(AmazonReview & { asin: string })[]>((a, [asin, reviews]) => {
-      a.push(...reviews.map((r) => ({ asin, ...r })));
-      return a;
-    }, []);
-  const mappedData1 = await formatRecords(items, itemHeaders);
-  const mappedData2 = await formatRecords(reviews, reviewHeaders);
   const fragments = [
-    { data: mappedData1, imageColumn: ['A+截图', '商品图片链接'], name: 'items' },
-    { data: mappedData2, imageColumn: '图片链接', name: 'reviews' },
+    {
+      data: items,
+      headers: headers,
+      imageColumn: ['A+截图', '商品图片链接'],
+      name: 'items',
+    },
   ];
-  const filename = await cloudExporter.doExport(fragments);
-
-  filename && message.info(`导出完成`);
+  await excelHelper.exportFile(fragments, { cloud: opt === 'cloud' });
 };
 
 const handleImport = async (file: File) => {
-  const itemHeaders = getItemHeaders();
-  const wb = await importFromXLSX(file, { asWorkBook: true });
-
-  const sheet1 = wb.getSheet(0)!;
-  const items = await sheet1.toJson<AmazonItem>({ headers: itemHeaders });
-  allItems.value = items;
-
-  if (wb.sheetCount > 1) {
-    const sheet2 = wb.getSheet(1)!;
-    const reviews = await sheet2.toJson<AmazonReview & { asin?: string }>({
-      headers: reviewHeaders,
-    });
-    reviewItems.value = reviews.reduce((m, r) => {
-      const asin = r.asin!;
-      delete r.asin;
-      m.has(asin) || m.set(asin, []);
-      const arr = m.get(asin)!;
-      arr.push(r);
-      return m;
-    }, new Map<string, AmazonReview[]>());
-  }
-
-  message.info(`成功导入 ${file.name} 文件`);
+  const headers = getItemHeaders();
+  const [dataFragment] = await excelHelper.importFile(file, [headers]);
+  allItems.value = dataFragment.data as typeof allItems.value;
 };
 
 const handleClearData = async () => {
   allItems.value = [];
-  reviewItems.value = new Map();
 };
 </script>
 
@@ -295,8 +224,8 @@ const handleClearData = async () => {
   <div class="result-table">
     <result-table :columns="columns" :records="filteredData">
       <template #header>
-        <n-space>
-          <div style="padding-right: 10px">Amazon数据</div>
+        <n-space align="center">
+          <h3 class="header-text">Amazon Items</h3>
           <n-switch size="small" class="filter-switch" v-model:value="filter.detailOnly">
             <template #checked> 详情 </template>
             <template #unchecked> 全部</template>
@@ -307,51 +236,14 @@ const handleClearData = async () => {
         <n-space size="small">
           <n-input
             v-model:value="filter.search"
-            size="small"
             placeholder="输入文本过滤结果"
             round
             clearable
             style="min-width: 230px"
           />
-          <control-strip round size="small" @clear="handleClearData" @import="handleImport">
+          <control-strip round @clear="handleClearData" @import="handleImport">
             <template #exporter>
-              <ul v-if="!cloudExporter.isRunning.value" class="exporter-menu">
-                <li @click="handleLocalExport">
-                  <n-tooltip :delay="1000" placement="right">
-                    <template #trigger>
-                      <div class="menu-item">
-                        <n-icon><lucide-sheet /></n-icon>
-                        <span>本地导出</span>
-                      </div>
-                    </template>
-                    不包含图片
-                  </n-tooltip>
-                </li>
-                <li @click="handleCloudExport">
-                  <n-tooltip :delay="1000" placement="right">
-                    <template #trigger>
-                      <div class="menu-item">
-                        <n-icon><ic-outline-cloud /></n-icon>
-                        <span>云端导出</span>
-                      </div>
-                    </template>
-                    包含图片
-                  </n-tooltip>
-                </li>
-              </ul>
-              <div v-else class="expoter-progress-panel">
-                <n-progress
-                  type="circle"
-                  :percentage="
-                    (cloudExporter.progress.current * 100) / cloudExporter.progress.total
-                  "
-                >
-                  <span>
-                    {{ cloudExporter.progress.current }}/{{ cloudExporter.progress.total }}
-                  </span>
-                </n-progress>
-                <n-button @click="cloudExporter.stop()">停止</n-button>
-              </div>
+              <export-panel @export-file="handleExport" />
             </template>
             <template #filter>
               <div class="filter-section">
@@ -360,7 +252,7 @@ const handleClearData = async () => {
                   :model="filter"
                   label-placement="left"
                   label-align="center"
-                  label-width="100"
+                  :label-width="95"
                 >
                   <n-form-item label="关键词">
                     <n-select
@@ -420,53 +312,15 @@ const handleClearData = async () => {
 <style scoped lang="scss">
 .result-table {
   width: 100%;
+
+  .header-text {
+    padding: 0px;
+    margin: 0px;
+  }
 }
 
 :deep(.filter-switch) {
   font-size: 15px;
-}
-
-.exporter-menu {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: #fff;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-  font-size: 15px;
-
-  li {
-    padding: 5px 10px;
-    cursor: pointer;
-    transition: background 0.15s;
-    color: #222;
-    user-select: none;
-    border-radius: 6px;
-
-    &:hover {
-      background: #f0f6fa;
-      color: #007bff;
-    }
-
-    .menu-item {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 5px;
-    }
-  }
-}
-
-.expoter-progress-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  font-size: 18px;
-  padding: 10px;
-  gap: 15px;
-  cursor: wait;
 }
 
 .filter-section {

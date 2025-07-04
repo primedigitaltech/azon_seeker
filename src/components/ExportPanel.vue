@@ -3,12 +3,12 @@ import { useExcelHelper } from '~/composables/useExcelHelper';
 
 const excelHelper = useExcelHelper();
 
-const emit = defineEmits<{ ['export']: [opt: 'local' | 'cloud'] }>();
+const emit = defineEmits<{ exportFile: [opt: 'local' | 'cloud'] }>();
 </script>
 
 <template>
   <ul v-if="!excelHelper.isRunning.value" class="exporter-menu">
-    <li @click="emit('export', 'local')">
+    <li @click="emit('exportFile', 'local')">
       <n-tooltip :delay="1000" placement="right">
         <template #trigger>
           <div class="menu-item">
@@ -19,7 +19,7 @@ const emit = defineEmits<{ ['export']: [opt: 'local' | 'cloud'] }>();
         不包含图片
       </n-tooltip>
     </li>
-    <li @click="emit('export', 'cloud')">
+    <li @click="emit('exportFile', 'cloud')">
       <n-tooltip :delay="1000" placement="right">
         <template #trigger>
           <div class="menu-item">

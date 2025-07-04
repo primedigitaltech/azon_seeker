@@ -145,7 +145,7 @@ export class AmazonDetailPageInjector extends BaseInjector {
         window.scrollBy(0, ~~(Math.random() * 500) + 500);
         await new Promise((resolve) => setTimeout(resolve, ~~(Math.random() * 100) + 200));
         const targetNode = document.querySelector(
-          '#prodDetails:has(td), #detailBulletsWrapper_feature_div:has(li), .av-page-desktop',
+          '#prodDetails:has(td), #detailBulletsWrapper_feature_div:has(li), .av-page-desktop, #productDescription_feature_div',
         );
         const exceptionalNodeSelectors = ['.music-detail-header', '.avu-retail-page'];
         for (const selector of exceptionalNodeSelectors) {
@@ -455,7 +455,7 @@ export class AmazonReviewPageInjector extends BaseInjector {
           document.body,
           null,
           XPathResult.FIRST_ORDERED_NODE_TYPE,
-        ).singleNodeValue as HTMLAnchorElement;
+        ).singleNodeValue as HTMLElement;
         starNode.click();
         await new Promise((resolve) => setTimeout(resolve, 100));
       },

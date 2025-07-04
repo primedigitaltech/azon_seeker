@@ -27,7 +27,7 @@ export interface AmazonPageWorkerEvents {
   /**
    * The event is fired when top reviews collected in detail page
    */
-  ['item-top-reviews-collected']: Pick<AmazonDetailItem, 'asin' | 'topReviews'>;
+  // ['item-top-reviews-collected']: Pick<AmazonDetailItem, 'asin' | 'topReviews'>;
   /**
    * The event is fired when aplus screenshot-collect
    */
@@ -65,7 +65,10 @@ export interface AmazonPageWorker extends Listener<AmazonPageWorkerEvents> {
    * @param asins Amazon Standard Identification Numbers.
    * @param options The Options Specify Behaviors.
    */
-  runReviewPageTask(asins: string[], options?: LanchTaskBaseOptions): Promise<void>;
+  runReviewPageTask(
+    asins: string[],
+    options?: LanchTaskBaseOptions & { recent?: boolean },
+  ): Promise<void>;
 
   /**
    * Stop the worker.

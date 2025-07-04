@@ -8,8 +8,8 @@ defineProps<{ model: AmazonDetailItem }>();
       <n-descriptions-item label="ASIN">
         {{ model.asin }}
       </n-descriptions-item>
-      <n-descriptions-item label="获取日期">
-        {{ model.timestamp }}
+      <n-descriptions-item label="销量信息">
+        {{ model.broughtInfo || '-' }}
       </n-descriptions-item>
       <n-descriptions-item label="评价">
         {{ model.rating || '-' }}
@@ -32,8 +32,11 @@ defineProps<{ model: AmazonDetailItem }>();
       <n-descriptions-item label="图片链接" :span="4">
         <image-link v-for="link in model.imageUrls" :url="link" />
       </n-descriptions-item>
-      <n-descriptions-item v-if="model.aplus" label="A+" :span="4">
+      <n-descriptions-item v-if="model.aplus" label="A+" :span="2">
         <image-link :url="model.aplus" />
+      </n-descriptions-item>
+      <n-descriptions-item label="获取日期" :span="2">
+        {{ model.timestamp }}
       </n-descriptions-item>
     </n-descriptions>
   </div>

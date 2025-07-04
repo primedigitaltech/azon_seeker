@@ -9,7 +9,7 @@ export function usePageWorker(
   type: 'homedepot',
   settings?: HomedepotWorkerSettings,
 ): ReturnType<typeof useHomedepotWorker>;
-export function usePageWorker(type: 'amazon' | 'homedepot', settings: any) {
+export function usePageWorker(type: Website, settings: any) {
   let worker = null;
   switch (type) {
     case 'amazon':

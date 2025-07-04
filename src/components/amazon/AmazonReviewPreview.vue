@@ -1,11 +1,13 @@
 <script lang="ts" setup>
 import { useElementSize } from '@vueuse/core';
-import { exportToXLSX, Header, importFromXLSX } from '~/logic/excel';
+import { useExcelHelper } from '~/composables/useExcelHelper';
+import type { Header } from '~/logic/excel';
 import { reviewItems } from '~/storages/amazon';
 
 const props = defineProps<{ asin: string }>();
 
 const message = useMessage();
+const excelHelper = useExcelHelper();
 
 const containerRef = useTemplateRef('review-list');
 const { height } = useElementSize(containerRef);
@@ -23,33 +25,32 @@ const page = reactive({
 });
 
 const view = computed(() => {
-  const filteredData = filterData(allReviews);
   const offset = (page.current - 1) * page.pageSize;
-  if (offset >= filteredData.length && page.current > 1) {
+  if (offset >= filteredData.value.length && page.current > 1) {
     page.current = 1;
   }
-  const data = filteredData.slice(offset, offset + page.pageSize);
-  const pageCount = ~~(filteredData.length / page.pageSize);
-  return { data, pageCount, total: filteredData.length };
+  const data = filteredData.value.slice(offset, offset + page.pageSize);
+  const pageCount = ~~(filteredData.value.length / page.pageSize);
+  return { data, pageCount, total: filteredData.value.length };
 });
 
-const filterData = (data: AmazonReview[]) => {
-  let filteredData = data;
+const filteredData = computed(() => {
+  let data = allReviews;
   if (filter.keywords) {
-    filteredData = data.filter((item) => {
+    data = data.filter((item) => {
       const keywords = filter.keywords.toLowerCase();
-      return (
-        item.title.toLowerCase().includes(keywords) ||
-        item.content.toLowerCase().includes(keywords) ||
-        item.username.toLowerCase().includes(keywords)
-      );
+      return [
+        item.title.toLowerCase(),
+        item.content.toLowerCase(),
+        item.content.toLowerCase(),
+      ].some((s) => s.includes(keywords));
     });
   }
   if (filter.rating) {
-    filteredData = filteredData.filter((item) => item.rating === filter.rating);
+    data = data.filter((item) => item.rating === filter.rating);
   }
-  return filteredData;
-};
+  return data;
+});
 
 const handleClearData = () => {
   reviewItems.value.delete(props.asin);
@@ -72,7 +73,7 @@ const headers: Header[] = [
 ];
 
 const handleImport = async (file: File) => {
-  const importedData = await importFromXLSX<AmazonReview>(file, { headers });
+  const importedData = (await excelHelper.importFile(file, [headers]))[0].data as AmazonReview[];
   if (importedData.length === 0) {
     return;
   }
@@ -88,10 +89,18 @@ const handleImport = async (file: File) => {
   }
 };
 
-const handleExport = () => {
-  const fileName = `${props.asin}Reviews${dayjs().format('YYYY-MM-DD')}.xlsx`;
-  exportToXLSX(allReviews, { headers, fileName });
-  message.info('导出完成');
+const handleExport = async (opt: 'local' | 'cloud') => {
+  await excelHelper.exportFile(
+    [
+      {
+        data: allReviews,
+        headers,
+        name: `${props.asin}Reviews${dayjs().format('YYYY-MM-DD')}.xlsx`,
+        imageColumn: '图片链接',
+      },
+    ],
+    { cloud: opt === 'cloud' },
+  );
 };
 </script>
 
@@ -122,7 +131,11 @@ const handleExport = () => {
               }))
             "
           />
-          <control-strip @import="handleImport" @export="handleExport" @clear="handleClearData" />
+          <control-strip @import="handleImport" @clear="handleClearData">
+            <template #exporter>
+              <export-panel @export-file="handleExport" />
+            </template>
+          </control-strip>
         </n-space>
       </div>
     </div>

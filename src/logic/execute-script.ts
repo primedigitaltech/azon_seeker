@@ -46,7 +46,7 @@ export async function exec<T, P extends Record<string, unknown>>(
 ): Promise<T> {
   const { timeout = 30000 } = options;
   return new Promise<T>(async (resolve, reject) => {
-    while (true) {
+    for (let i = 0; i < 50; i++) {
       await new Promise<void>((r) => setTimeout(r, 200));
       const tab = await browser.tabs.get(tabId);
       if (tab.status === 'complete') {

@@ -60,7 +60,11 @@ class Worksheet {
       const rowData: Record<string, unknown> = {};
       row.eachCell((cell, colNumber) => {
         const header = this._ws.getRow(1).getCell(colNumber).value?.toString()!;
-        rowData[header] = cell.value;
+        if (cell.value && typeof cell.value === 'object' && 'text' in cell.value) {
+          rowData[header] = cell.value.text;
+        } else {
+          rowData[header] = cell.value;
+        }
       });
       jsonData.push(rowData);
     });

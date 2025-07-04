@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { Timeline } from '~/components/ProgressReport.vue';
 import { usePageWorker } from '~/page-worker';
-import { reviewAsinInput } from '~/storages/amazon';
+import { reviewAsinInput, reviewWorkerSettings } from '~/storages/amazon';
 
 const worker = usePageWorker('amazon', { objects: ['review'] });
 worker.on('error', ({ message: msg }) => {
@@ -41,6 +41,7 @@ const launch = async () => {
     progress: (remains) => {
       reviewAsinInput.value = remains.join('\n');
     },
+    recent: reviewWorkerSettings.value.recent,
   });
   timelines.value.push({
     type: 'info',
@@ -64,7 +65,20 @@ const handleInterrupt = () => {
   <div class="review-page-entry">
     <header-title>Amazon Review</header-title>
     <div class="interative-section">
-      <ids-input v-model="reviewAsinInput" :disabled="worker.isRunning.value" ref="asin-input" />
+      <ids-input v-model="reviewAsinInput" :disabled="worker.isRunning.value" ref="asin-input">
+        <template #extra-settings>
+          <div class="setting-panel">
+            <n-form label-placement="left">
+              <n-form-item label="模式:" :feedback-style="{ display: 'none' }">
+                <n-radio-group v-model:value="reviewWorkerSettings.recent">
+                  <n-radio :value="true" key="Recent" label="Recent" />
+                  <n-radio :value="false" key="Top" label="Top" />
+                </n-radio-group>
+              </n-form-item>
+            </n-form>
+          </div>
+        </template>
+      </ids-input>
       <n-button
         v-if="!worker.isRunning.value"
         round
@@ -119,5 +133,9 @@ const handleInterrupt = () => {
 
 .progress-report {
   width: 90%;
+}
+
+.setting-panel {
+  padding: 7px 10px;
 }
 </style>

@@ -1,11 +1,11 @@
 <script setup lang="tsx">
 import type { TableColumn } from '~/components/ResultTable.vue';
-import { useCloudExporter } from '~/composables/useCloudExporter';
-import { formatRecords, exportToXLSX, Header, importFromXLSX } from '~/logic/excel';
+import { useExcelHelper } from '~/composables/useExcelHelper';
+import type { Header } from '~/logic/excel';
 import { allItems } from '~/storages/homedepot';
 
 const message = useMessage();
-const cloudExporter = useCloudExporter();
+const excelHelper = useExcelHelper();
 
 const columns: TableColumn[] = [
   {
@@ -100,23 +100,15 @@ const handleClearData = () => {
 
 const handleImport = async (file: File) => {
   const itemHeaders = getItemHeaders();
-  allItems.value = await importFromXLSX<(typeof allItems.value)[0]>(file, { headers: itemHeaders });
+  const [dataFragment] = await excelHelper.importFile(file, [itemHeaders]);
+  allItems.value = dataFragment.data as typeof allItems.value;
   message.info(`成功导入 ${file.name} 文件`);
 };
 
-const handleLocalExport = async () => {
+const handleExport = async (opt: 'cloud' | 'local') => {
   const itemHeaders = getItemHeaders();
-  await exportToXLSX(filteredData.value, { headers: itemHeaders });
-  message.info(`导出完成`);
-};
-
-const handleCloudExport = async () => {
-  message.warning('正在导出，请勿关闭当前页面！', { duration: 2000 });
-  const itemHeaders = getItemHeaders();
-  const mappedData = await formatRecords(filteredData.value, itemHeaders);
-  const fragments = [{ data: mappedData, imageColumn: '主图链接' }];
-  const filename = await cloudExporter.doExport(fragments);
-  filename && message.info(`导出完成`);
+  const fragments = [{ data: filteredData.value, imageColumn: '主图链接', headers: itemHeaders }];
+  await excelHelper.exportFile(fragments, { cloud: opt === 'cloud' });
 };
 </script>
 
@@ -124,48 +116,14 @@ const handleCloudExport = async () => {
   <div class="result-table">
     <result-table :records="filteredData" :columns="columns">
       <template #header>
-        <n-space>
-          <div style="padding-right: 10px">Homedepot数据</div>
+        <n-space align="center">
+          <h3 class="header-text">Homedepot 数据</h3>
         </n-space>
       </template>
       <template #header-extra>
-        <control-strip round size="small" @clear="handleClearData" @import="handleImport">
+        <control-strip round @clear="handleClearData" @import="handleImport">
           <template #exporter>
-            <ul v-if="!cloudExporter.isRunning.value" class="exporter-menu">
-              <li @click="handleLocalExport">
-                <n-tooltip :delay="1000" placement="right">
-                  <template #trigger>
-                    <div class="menu-item">
-                      <n-icon><lucide-sheet /></n-icon>
-                      <span>本地导出</span>
-                    </div>
-                  </template>
-                  不包含图片
-                </n-tooltip>
-              </li>
-              <li @click="handleCloudExport">
-                <n-tooltip :delay="1000" placement="right">
-                  <template #trigger>
-                    <div class="menu-item">
-                      <n-icon><ic-outline-cloud /></n-icon>
-                      <span>云端导出</span>
-                    </div>
-                  </template>
-                  包含图片
-                </n-tooltip>
-              </li>
-            </ul>
-            <div v-else class="expoter-progress-panel">
-              <n-progress
-                type="circle"
-                :percentage="(cloudExporter.progress.current * 100) / cloudExporter.progress.total"
-              >
-                <span>
-                  {{ cloudExporter.progress.current }}/{{ cloudExporter.progress.total }}
-                </span>
-              </n-progress>
-              <n-button @click="cloudExporter.stop()">停止</n-button>
-            </div>
+            <export-panel @export-file="handleExport" />
           </template>
         </control-strip>
       </template>
@@ -176,37 +134,10 @@ const handleCloudExport = async () => {
 <style scoped lang="scss">
 .result-table {
   width: 100%;
-}
 
-.exporter-menu {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: #fff;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-  font-size: 15px;
-
-  li {
-    padding: 5px 10px;
-    cursor: pointer;
-    transition: background 0.15s;
-    color: #222;
-    user-select: none;
-    border-radius: 6px;
-
-    &:hover {
-      background: #f0f6fa;
-      color: #007bff;
-    }
-
-    .menu-item {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 5px;
-    }
+  .header-text {
+    padding: 0px;
+    margin: 0px;
   }
 }
 

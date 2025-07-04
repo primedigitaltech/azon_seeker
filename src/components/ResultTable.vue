@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const page = reactive({ current: 1, size: 10 });
+import type { EllipsisProps } from 'naive-ui';
 
 export type TableColumn =
   | {
@@ -7,6 +7,7 @@ export type TableColumn =
       key: string;
       minWidth?: number;
       hidden?: boolean;
+      ellipsis?: boolean | EllipsisProps;
       render?: (row: any) => VNode;
     }
   | {
@@ -16,10 +17,16 @@ export type TableColumn =
       renderExpand: (row: any) => VNode;
     };
 
-const props = defineProps<{
-  records: Record<string, unknown>[];
-  columns: TableColumn[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    records: Record<string, unknown>[];
+    columns: TableColumn[];
+    defaultPageSize?: number;
+  }>(),
+  { defaultPageSize: 10 },
+);
+
+const page = reactive({ current: 1, size: props.defaultPageSize });
 
 const itemView = computed(() => {
   const { current, size } = page;
