@@ -2,7 +2,7 @@
 import { execSync } from 'node:child_process';
 import fs from 'fs-extra';
 import chokidar from 'chokidar';
-import { isDev, log, outputDir, port, r } from './utils';
+import { isDev, log, outputDir, port, r } from './utils.js';
 
 /**
  * Stub index.html to use Vite in development

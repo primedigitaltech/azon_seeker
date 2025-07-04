@@ -1,5 +1,5 @@
 import fs from 'fs-extra';
-import { isDev, isFirefox, log, outputDir, port, r } from './utils';
+import { isDev, isFirefox, log, outputDir, port, r } from './utils.js';
 import { type Manifest } from 'webextension-polyfill';
 import type PkgType from '../package.json';
 
@@ -54,7 +54,9 @@ async function getManifest() {
 
   // add content security policy
   if (isFirefox) {
-    manifest.content_security_policy = `script-src 'self' http://localhost:${port}; object-src 'self';`;
+    manifest.content_security_policy = isDev
+      ? `script-src 'self' http://localhost:${port}; object-src 'self';`
+      : `script-src 'self'; object-src 'self';`;
   } else {
     manifest.content_security_policy = {
       extension_pages: isDev

@@ -22,12 +22,12 @@ watch(currentUrl, (newVal) => {
     const url = new URL(newVal);
     switch (url.hostname) {
       case 'www.amazon.com':
-        router.push('/amazon');
         site.value = 'amazon';
+        router.push({ path: '/amazon' });
         break;
       case 'www.homedepot.com':
-        router.push('/homedepot');
         site.value = 'homedepot';
+        router.push({ path: '/homedepot' });
         break;
       default:
         break;

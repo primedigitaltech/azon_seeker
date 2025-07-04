@@ -10,8 +10,7 @@ import IconsResolver from 'unplugin-icons/resolver';
 import Components from 'unplugin-vue-components/vite';
 import AutoImport from 'unplugin-auto-import/vite';
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
-
-import { isDev, outputDir, port, r } from './scripts/utils';
+import { isDev, outputDir, port, r } from './scripts/utils.js';
 import packageJson from './package.json';
 
 export const sharedConfig: UserConfig = {
