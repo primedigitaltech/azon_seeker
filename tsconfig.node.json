@@ -5,7 +5,8 @@
     "moduleResolution": "node16",
     "types": ["vite/client"],
     "resolveJsonModule": true,
-    "baseUrl": "."
+    "baseUrl": ".",
+    "strict": true
   },
   "include": ["vite.config.*", "scripts/*"]
 }

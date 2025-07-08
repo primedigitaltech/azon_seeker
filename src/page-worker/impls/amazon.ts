@@ -1,11 +1,11 @@
-import type { AmazonPageWorker, AmazonPageWorkerEvents, LanchTaskBaseOptions } from './types';
+import type { AmazonPageWorker, AmazonPageWorkerEvents, LanchTaskBaseOptions } from '../types';
 import type { Tabs } from 'webextension-polyfill';
-import { withErrorHandling } from './error-handler';
+import { withErrorHandling } from '../error-handler';
 import {
   AmazonDetailPageInjector,
   AmazonReviewPageInjector,
   AmazonSearchPageInjector,
-} from './web-injectors/amazon';
+} from '../web-injectors/amazon';
 import { isForbiddenUrl } from '~/env';
 import { BaseWorker } from './base';
 

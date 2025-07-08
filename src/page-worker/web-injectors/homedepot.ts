@@ -28,6 +28,14 @@ export class HomedepotDetailPageInjector extends BaseInjector {
           (document.readyState == 'complete' || timeout)
         );
       };
+      const needToSkip = () => {
+        return !!document.evaluate(
+          `//p[text() = 'The product you are trying to view is not currently available.']`,
+          document,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+        ).singleNodeValue;
+      };
       while (true) {
         await new Promise((resolve) => setTimeout(resolve, 500 + ~~(Math.random() * 500)));
         document
@@ -41,10 +49,14 @@ export class HomedepotDetailPageInjector extends BaseInjector {
           : document
               .querySelector('[data-component^="product-details:ProductDetailsTitle"]')
               ?.scrollIntoView({ behavior: 'smooth' });
+        if (needToSkip()) {
+          return false;
+        }
         if (isLoaded()) {
           break;
         }
       }
+      return true;
     });
   }
 
@@ -92,7 +104,86 @@ export class HomedepotDetailPageInjector extends BaseInjector {
         reviewCount,
         mainImageUrl,
         modelInfo,
-      } as Omit<HomedepotDetailItem, 'OSMID'>;
+      } as Omit<HomedepotDetailItem, 'OSMID' | 'imageUrls' | 'timestamp'>;
+    });
+  }
+
+  public getImageUrls() {
+    return this.run(async () => {
+      const text = document.querySelector<HTMLElement>(
+        'script#thd-helmet__script--productStructureData',
+      )!.innerText;
+      const obj = JSON.parse(text);
+      return obj['image'] as string[];
+    });
+  }
+
+  public waitForReviewLoad() {
+    return this.run(async () => {
+      while (true) {
+        const el = document.querySelector('.review_item');
+        document
+          .querySelector("#product-section-rr div[role='button']")
+          ?.scrollIntoView({ behavior: 'smooth' });
+        if (el && el.getClientRects().length > 0 && el.getClientRects()[0].height > 0) {
+          el?.scrollIntoView({ behavior: 'smooth' });
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      return true;
+    });
+  }
+
+  public getReviews() {
+    return this.run(async () => {
+      const elements = document.querySelectorAll('.review_item');
+      return Array.from(elements).map((root) => {
+        const title = root.querySelector<HTMLElement>('.review-content__title')!.innerText;
+        const content = root.querySelector<HTMLElement>('.review-content-body')!.innerText;
+        const username = root.querySelector<HTMLElement>(
+          '.review-content__no-padding > button',
+        )!.innerText;
+        const dateInfo = root.querySelector<HTMLElement>('.review-content__date')!.innerText;
+        const rating = root
+          .querySelector<HTMLElement>('[name="simple-rating"]')!
+          .getAttribute('aria-label')!;
+        const badges = Array.from(
+          root.querySelectorAll<HTMLElement>('.review-status-icons__list, li.review-badge > *'),
+        )
+          .map((el) => el.innerText)
+          .filter((t) => !["(What's this?)"].includes(t));
+        const imageUrls = Array.from(
+          root.querySelectorAll<HTMLElement>('.media-carousel__media > button'),
+        ).map((el) => el.style.backgroundImage.split(/[\(\)]/, 3)[1]);
+        return { title, content, username, dateInfo, rating, badges, imageUrls } as HomedepotReview;
+      });
+    });
+  }
+
+  public tryJumpToNextPage() {
+    return this.run(async () => {
+      const final = document.querySelector<HTMLElement>(
+        '.pager__summary--bold:nth-last-of-type(2)',
+      )!.innerText;
+      const anchor = document.querySelector<HTMLElement>(
+        '.pager__summary--bold + .pager__summary--bold',
+      )!.innerText;
+      if (final === anchor) {
+        return false;
+      }
+      const button = document.querySelector<HTMLElement>('[data-testid="pagination-Next"]');
+      button!.click();
+      while (true) {
+        const newAnchor = document.querySelector<HTMLElement>(
+          '.pager__summary--bold + .pager__summary--bold',
+        )!.innerText;
+        if (newAnchor !== anchor) {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      return true;
     });
   }
 }

@@ -1,5 +1,5 @@
 import { useLongTask } from '~/composables/useLongTask';
-import amazon from '../amazon';
+import amazon from '../impls/amazon';
 import { uploadImage } from '~/logic/upload';
 import { detailItems, reviewItems, searchItems } from '~/storages/amazon';
 import { createGlobalState } from '@vueuse/core';

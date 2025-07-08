@@ -8,7 +8,7 @@ export function flattenObject(obj: Record<string, unknown>) {
       value = value[key];
     }
     if (typeof value === 'object' && value !== null) {
-      stack.push(...Object.keys(value).map((k) => keys.concat([k])));
+      stack.unshift(...Object.keys(value).map((k) => keys.concat([k])));
     } else {
       mappedEnties.push([keys, value]);
     }

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Timeline } from '~/components/ProgressReport.vue';
 import { usePageWorker } from '~/page-worker';
+import { detailInputText } from '~/storages/homedepot';
+import { detailWorkerSettings } from '~/storages/homedepot';
 
-const inputText = ref('');
 const idInputRef = useTemplateRef('id-input');
 
 const worker = usePageWorker('homedepot', { objects: ['detail'] });
@@ -20,7 +21,7 @@ const timelines = ref<Timeline[]>([]);
 const handleStart = async () => {
   idInputRef.value?.validate().then(async (success) => {
     if (success) {
-      const ids = inputText.value.split(/\n|\s|,|;/).filter((item) => item.length > 0);
+      const ids = detailInputText.value.split(/\n|\s|,|;/).filter((item) => item.length > 0);
       timelines.value = [
         {
           type: 'info',
@@ -36,11 +37,12 @@ const handleStart = async () => {
               type: 'info',
               title: '继续',
               time: new Date().toLocaleString(),
-              content: `继续采集OSMID: ${remains.join(', ')}`,
+              content: `剩余: ${remains.length}`,
             });
-            inputText.value = remains.join('\n');
           }
+          detailInputText.value = remains.join('\n');
         },
+        review: detailWorkerSettings.value.review,
       });
       timelines.value.push({
         type: 'info',
@@ -62,29 +64,29 @@ const handleInterrupt = () => {
     <header-title>Homedepot</header-title>
     <div class="interative-section">
       <ids-input
-        v-model="inputText"
+        v-model="detailInputText"
         :disabled="worker.isRunning.value"
         ref="id-input"
-        :match-pattern="/^\d+(\n\d+)*\n?$/g"
+        :match-pattern="/^\d{9}(\n\d{9})*\n?$/g"
         placeholder="输入OSMID"
         validate-message="请输入格式正确的OSMID"
       />
-      <n-button
-        v-if="!worker.isRunning.value"
-        round
-        size="large"
-        type="primary"
-        @click="handleStart"
-      >
-        <template #icon>
-          <ant-design-thunderbolt-outlined />
+      <optional-button v-if="!worker.isRunning.value" round size="large" @click="handleStart">
+        <template #popover>
+          <div class="setting-panel">
+            <div>设置</div>
+            <n-form :label-width="50" label-placement="left" :show-feedback="false">
+              <n-form-item label="评论:">
+                <n-switch v-model:value="detailWorkerSettings.review" />
+              </n-form-item>
+            </n-form>
+          </div>
         </template>
+        <n-icon :size="20"><ant-design-thunderbolt-outlined /></n-icon>
         开始
-      </n-button>
+      </optional-button>
       <n-button v-else round size="large" type="primary" @click="handleInterrupt">
-        <template #icon>
-          <ant-design-thunderbolt-outlined />
-        </template>
+        <n-icon :size="20"><ant-design-thunderbolt-outlined /></n-icon>
         停止
       </n-button>
     </div>
@@ -125,5 +127,12 @@ const handleInterrupt = () => {
 .progress-report {
   margin-top: 10px;
   width: 95%;
+}
+
+.setting-panel {
+  > *:first-of-type {
+    font-size: larger;
+    margin-bottom: 5px;
+  }
 }
 </style>

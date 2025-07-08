@@ -27,10 +27,10 @@ export class BaseInjector {
   }
 
   protected async screenshot(
-    params: ProtocolMap['html-to-image']['data'],
-  ): Promise<ProtocolMap['html-to-image']['return']> {
+    data: ProtocolMap['dom-to-image']['data'],
+  ): Promise<ProtocolMap['dom-to-image']['return']> {
     const sender = await this.getMessageSender();
-    return sender!.sendMessage('html-to-image', params, {
+    return sender!.sendMessage('dom-to-image', data, {
       context: 'content-script',
       tabId: this._tab.id!,
     });

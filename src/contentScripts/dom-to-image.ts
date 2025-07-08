@@ -1,13 +1,13 @@
-import { toPng } from 'html-to-image';
+import { snapdom } from '@zumer/snapdom';
 import { onMessage } from 'webext-bridge/content-script';
 
-onMessage('html-to-image', async (ev) => {
+onMessage('dom-to-image', async (ev) => {
   const params = ev.data;
   const targetNode =
     params.type == 'CSS'
       ? document.querySelector<HTMLElement>(params.selector)!
       : (document.evaluate(params.xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE)
           .singleNodeValue as HTMLElement);
-  const imgData = await toPng(targetNode);
-  return { b64: imgData };
+  const result = await snapdom.toPng(targetNode, { compress: true });
+  return { b64: result.src };
 });

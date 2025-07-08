@@ -9,13 +9,19 @@ defineProps<{ model: AmazonDetailItem }>();
         {{ model.asin }}
       </n-descriptions-item>
       <n-descriptions-item label="销量信息">
-        {{ model.broughtInfo || '-' }}
+        {{ model.boughtInfo || '-' }}
       </n-descriptions-item>
       <n-descriptions-item label="评价">
         {{ model.rating || '-' }}
       </n-descriptions-item>
       <n-descriptions-item label="评论数">
         {{ model.ratingCount || '-' }}
+      </n-descriptions-item>
+      <n-descriptions-item label="分类信息" :span="3">
+        {{ model.categories || '-' }}
+      </n-descriptions-item>
+      <n-descriptions-item label="上架日期">
+        {{ model.availableDate || '-' }}
       </n-descriptions-item>
       <n-descriptions-item label="大类">
         {{ model.category1?.name || '-' }}

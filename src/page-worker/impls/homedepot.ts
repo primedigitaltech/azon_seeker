@@ -1,7 +1,7 @@
-import type { HomedepotEvents, HomedepotWorker, LanchTaskBaseOptions } from './types';
+import type { HomedepotEvents, HomedepotWorker, LanchTaskBaseOptions } from '../types';
 import { Tabs } from 'webextension-polyfill';
-import { withErrorHandling } from './error-handler';
-import { HomedepotDetailPageInjector } from './web-injectors/homedepot';
+import { withErrorHandling } from '../error-handler';
+import { HomedepotDetailPageInjector } from '../web-injectors/homedepot';
 import { BaseWorker } from './base';
 
 class HomedepotWorkerImpl
@@ -25,20 +25,45 @@ class HomedepotWorkerImpl
   }
 
   @withErrorHandling
-  private async wanderingDetailPage(OSMID: string) {
+  private async wanderingDetailPage(OSMID: string, review?: boolean) {
     const url = `https://www.homedepot.com/p/${OSMID}`;
     const tab = await this.createNewTab(url);
     const injector = new HomedepotDetailPageInjector(tab);
-    await injector.waitForPageLoad();
+    const available = await injector.waitForPageLoad();
+    if (!available) {
+      setTimeout(() => {
+        browser.tabs.remove(tab.id!);
+      }, 1000);
+      return;
+    }
     const info = await injector.getInfo();
-    await this.emit('detail-item-collected', { item: { OSMID, ...info } });
+    const imageUrls = await injector.getImageUrls();
+    await this.emit('detail-item-collected', {
+      item: { OSMID, ...info, imageUrls, timestamp: dayjs().format('YYYY/M/D HH:mm:ss') },
+    });
+    if (!review) {
+      setTimeout(() => {
+        browser.tabs.remove(tab.id!);
+      }, 1000);
+      return;
+    }
+    await injector.waitForReviewLoad();
+    const reviews = await injector.getReviews();
+    await this.emit('review-collected', { reviews });
+    while (await injector.tryJumpToNextPage()) {
+      const reviews = await injector.getReviews();
+      await this.emit('review-collected', { reviews });
+    }
     setTimeout(() => {
       browser.tabs.remove(tab.id!);
     }, 1000);
   }
 
-  async runDetailPageTask(OSMIDs: string[], options: LanchTaskBaseOptions = {}): Promise<void> {
-    const { progress } = options;
+  async runDetailPageTask(
+    OSMIDs: string[],
+    options: LanchTaskBaseOptions & { review?: boolean } = {},
+  ): Promise<void> {
+    const { progress, review } = options;
     const remains = [...OSMIDs];
     let interrupt = false;
     const unsubscribe = this.on('interrupt', () => {
@@ -46,7 +71,7 @@ class HomedepotWorkerImpl
     });
     while (remains.length > 0 && !interrupt) {
       const OSMIDs = remains.shift()!;
-      await this.wanderingDetailPage(OSMIDs);
+      await this.wanderingDetailPage(OSMIDs, review);
       progress && progress(remains);
     }
     unsubscribe();

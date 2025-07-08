@@ -139,6 +139,7 @@ export class AmazonSearchPageInjector extends BaseInjector {
 }
 
 export class AmazonDetailPageInjector extends BaseInjector {
+  /**等待页面加载完成 */
   public async waitForPageLoaded() {
     return this.run(async () => {
       while (true) {
@@ -162,19 +163,32 @@ export class AmazonDetailPageInjector extends BaseInjector {
     });
   }
 
+  /**获取基本信息 */
   public async getBaseInfo() {
     return this.run(async () => {
       const title = document.querySelector<HTMLElement>('#title')!.innerText;
       const price = document.querySelector<HTMLElement>(
         '.aok-offscreen, .a-price:not(.a-text-price) .a-offscreen',
       )?.innerText;
-      const broughtInfo = document.querySelector<HTMLElement>(
+      const boughtInfo = document.querySelector<HTMLElement>(
         `#social-proofing-faceout-title-tk_bought`,
       )?.innerText;
-      return { title, price, broughtInfo };
+      const availableDate = (
+        document.evaluate(
+          `//span[contains(text(), 'Date First Available')]/following-sibling::*[1]`,
+          document,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+        ).singleNodeValue as HTMLElement | undefined
+      )?.innerText;
+      const categories = document
+        .querySelector<HTMLElement>('#wayfinding-breadcrumbs_feature_div')
+        ?.innerText.replaceAll('\n', '');
+      return { title, price, boughtInfo, availableDate, categories };
     });
   }
 
+  /**获取评价信息 */
   public async getRatingInfo() {
     return this.run(async () => {
       const review = document.querySelector('#averageCustomerReviews');
@@ -195,6 +209,7 @@ export class AmazonDetailPageInjector extends BaseInjector {
     });
   }
 
+  /**获取排名信息 */
   public async getRankText() {
     return this.run(async () => {
       const xpathExps = [
@@ -219,6 +234,7 @@ export class AmazonDetailPageInjector extends BaseInjector {
     });
   }
 
+  /**获取图像链接 */
   public async getImageUrls() {
     return this.run(async () => {
       const overlay = document.querySelector<HTMLDivElement>('.overlayRestOfImages');
@@ -249,6 +265,7 @@ export class AmazonDetailPageInjector extends BaseInjector {
     });
   }
 
+  /**获取精选评论 */
   public async getTopReviews() {
     return this.run(async () => {
       const targetNode = document.querySelector<HTMLDivElement>('.cr-widget-FocalReviews');
@@ -303,6 +320,7 @@ export class AmazonDetailPageInjector extends BaseInjector {
     });
   }
 
+  /**滑动扫描A+界面 */
   public async scanAPlus() {
     return this.run(async () => {
       const aplusEl = document.querySelector<HTMLElement>('#aplus_feature_div');
@@ -329,8 +347,59 @@ export class AmazonDetailPageInjector extends BaseInjector {
     });
   }
 
+  /**获取A+截图 */
   public async captureAPlus() {
     return this.screenshot({ type: 'CSS', selector: '#aplus_feature_div' });
+  }
+
+  /**获取额外商品信息 */
+  public async getExtraInfo() {
+    return this.run(async () => {
+      const $x = <T extends HTMLElement>(xpath: string): T[] | undefined => {
+        const result = document.evaluate(
+          xpath,
+          document,
+          null,
+          XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+          null,
+        );
+        const nodes: T[] = [];
+        for (let i = 0; i < result.snapshotLength; i++) {
+          nodes.push(result.snapshotItem(i)! as T);
+        }
+        return nodes.length > 0 ? nodes : undefined;
+      };
+      const shipFrom = document.querySelector<HTMLElement>(
+        '#fulfillerInfoFeature_feature_div > *:last-of-type',
+      )?.innerText;
+      const abouts = $x(
+        `//*[normalize-space(text())='About this item']/following-sibling::ul[1]/li`,
+      )?.map((el) => el.innerText);
+      const brand = $x(`//*[./span[normalize-space(text())='Brand']]/following-sibling::*[1]`)?.[0]
+        .innerText;
+      const flavor = $x(
+        `//*[./span[normalize-space(text())='Flavor']]/following-sibling::*[1]`,
+      )?.[0].innerText;
+      const unitCount = $x(
+        `//*[./span[normalize-space(text())='Unit Count']]/following-sibling::*[1]`,
+      )?.[0].innerText;
+      const itemForm = $x(
+        `//*[./span[normalize-space(text())='Item Form']]/following-sibling::*[1]`,
+      )?.[0].innerText;
+      const productDemensions = $x(
+        `//span[contains(text(), 'Dimensions')]/following-sibling::*[1]`,
+      )?.[0].innerText;
+
+      return {
+        abouts,
+        shipFrom,
+        brand,
+        flavor,
+        unitCount,
+        itemForm,
+        productDemensions,
+      };
+    });
   }
 }
 

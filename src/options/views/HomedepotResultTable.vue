@@ -7,6 +7,12 @@ import { allItems } from '~/storages/homedepot';
 const message = useMessage();
 const excelHelper = useExcelHelper();
 
+const filter = ref({ timeRange: null as [number, number] | null });
+
+const resetFilter = () => {
+  filter.value = { timeRange: null };
+};
+
 const columns: TableColumn[] = [
   {
     title: 'OSMID',
@@ -42,14 +48,9 @@ const columns: TableColumn[] = [
     minWidth: 75,
   },
   {
-    title: '商品链接',
-    key: 'link',
-    hidden: true,
-  },
-  {
-    title: '主图链接',
-    key: 'mainImageUrl',
-    hidden: true,
+    title: '获取日期',
+    key: 'timestamp',
+    minWidth: 150,
   },
   {
     title: '操作',
@@ -75,23 +76,45 @@ const columns: TableColumn[] = [
   },
 ];
 
+const extraHeaders: Header[] = [
+  {
+    label: '商品链接',
+    prop: 'link',
+  },
+  {
+    label: '主图链接',
+    prop: 'mainImageUrl',
+  },
+  {
+    label: '图片链接',
+    prop: 'imageUrls',
+    formatOutputValue: (val?: string[]) => val?.join(';'),
+    parseImportValue: (val?: string) => val?.split(';'),
+  },
+];
+
 const filteredData = computed(() => {
-  return allItems.value;
+  let data = allItems.value;
+  if (filter.value.timeRange) {
+    const start = dayjs(filter.value.timeRange[0]);
+    const end = dayjs(filter.value.timeRange[1]);
+    data = data.filter(
+      (r) => dayjs(r.timestamp).diff(start) >= 0 && dayjs(r.timestamp).diff(end) <= 0,
+    );
+  }
+  return data;
 });
 
 const getItemHeaders = () => {
   return columns
     .filter((col: Record<string, any>) => col.key !== 'actions')
-    .reduce(
-      (p, v: Record<string, any>) => {
-        if ('key' in v && 'title' in v) {
-          p.push({ label: v.title, prop: v.key });
-        }
-        return p;
-      },
-      [] as { label: string; prop: string }[],
-    )
-    .concat([]) as Header[];
+    .reduce((p, v: Record<string, any>) => {
+      if ('key' in v && 'title' in v) {
+        p.push({ label: v.title, prop: v.key });
+      }
+      return p;
+    }, [] as Header[])
+    .concat(extraHeaders);
 };
 
 const handleClearData = () => {
@@ -125,6 +148,22 @@ const handleExport = async (opt: 'cloud' | 'local') => {
           <template #exporter>
             <export-panel @export-file="handleExport" />
           </template>
+          <template #filter>
+            <div class="filter-panel">
+              <div>过滤条件</div>
+              <n-form label-placement="left" :label-width="80" label-align="center">
+                <n-form-item label="采集时间:">
+                  <n-date-picker
+                    type="datetimerange"
+                    v-model:value="filter.timeRange"
+                  ></n-date-picker>
+                </n-form-item>
+              </n-form>
+              <n-space justify="end">
+                <n-button @click="resetFilter">重置</n-button>
+              </n-space>
+            </div>
+          </template>
         </control-strip>
       </template>
     </result-table>
@@ -150,5 +189,15 @@ const handleExport = async (opt: 'cloud' | 'local') => {
   padding: 10px;
   gap: 15px;
   cursor: wait;
+}
+
+.filter-panel {
+  min-width: 200px;
+  max-width: 500px;
+
+  & > div:first-of-type {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
 }
 </style>

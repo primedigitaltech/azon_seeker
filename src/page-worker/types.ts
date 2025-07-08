@@ -14,7 +14,14 @@ export interface AmazonPageWorkerEvents {
    */
   ['item-base-info-collected']: Pick<
     AmazonDetailItem,
-    'asin' | 'title' | 'broughtInfo' | 'price' | 'rating' | 'ratingCount' | 'timestamp'
+    | 'asin'
+    | 'title'
+    | 'boughtInfo'
+    | 'price'
+    | 'rating'
+    | 'ratingCount'
+    | 'categories'
+    | 'timestamp'
   >;
   /**
    * The event is fired when worker
@@ -82,6 +89,10 @@ export interface HomedepotEvents {
    */
   ['detail-item-collected']: { item: HomedepotDetailItem };
   /**
+   * The event is fired when reviews collect
+   */
+  ['review-collected']: { reviews: HomedepotReview[] };
+  /**
    * The event is fired when error occurs.
    */
   ['error']: { message: string; url?: string };
@@ -91,7 +102,10 @@ export interface HomedepotWorker extends Listener<HomedepotEvents> {
   /**
    * Browsing goods detail page and collect target information
    */
-  runDetailPageTask(OSMIDs: string[], options?: LanchTaskBaseOptions): Promise<void>;
+  runDetailPageTask(
+    OSMIDs: string[],
+    options?: LanchTaskBaseOptions & { review?: boolean },
+  ): Promise<void>;
 
   /**
    * Stop the worker.

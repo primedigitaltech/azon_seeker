@@ -1,6 +1,6 @@
 import { useLongTask } from '~/composables/useLongTask';
 import { detailItems as homedepotDetailItems } from '~/storages/homedepot';
-import homedepot from '../homedepot';
+import homedepot from '../impls/homedepot';
 import { createGlobalState } from '@vueuse/core';
 
 export interface HomedepotWorkerSettings {
@@ -44,21 +44,19 @@ function buildHomedepotWorker() {
   const commitChange = () => {
     const { objects } = settings.value;
     if (objects?.includes('detail')) {
-      const detailItems = toRaw(homedepotDetailItems.value);
       for (const [k, v] of detailCache.entries()) {
-        if (detailItems.has(k)) {
-          const origin = detailItems.get(k)!;
-          detailItems.set(k, { ...origin, ...v });
+        if (homedepotDetailItems.value.has(k)) {
+          const origin = homedepotDetailItems.value.get(k)!;
+          homedepotDetailItems.value.set(k, { ...origin, ...v });
         } else {
-          detailItems.set(k, v);
+          homedepotDetailItems.value.set(k, v);
         }
       }
-      homedepotDetailItems.value = detailItems;
       detailCache.clear();
     }
   };
 
-  const taskWrapper = <T extends (...params: any) => any>(func: T) => {
+  const taskWrapper1 = <T extends (...params: any) => any>(func: T) => {
     const { commitChangeIngerval = 10000 } = settings.value;
     return (...params: Parameters<T>) =>
       startTask(async () => {
@@ -69,7 +67,7 @@ function buildHomedepotWorker() {
       });
   };
 
-  const runDetailPageTask = taskWrapper(worker.runDetailPageTask.bind(worker));
+  const runDetailPageTask = taskWrapper1(worker.runDetailPageTask.bind(worker));
 
   return {
     settings,

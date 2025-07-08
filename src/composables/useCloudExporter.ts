@@ -61,12 +61,12 @@ class ExportExcelPipeline {
 
   public exportExcel(progress?: (current: number, total: number) => Promise<void> | void) {
     return new Promise<string>((resolve, reject) => {
-      this.socket.onmessage = (ev) => {
+      this.socket.onmessage = async (ev) => {
         const response: WebSocketResponse = JSON.parse(ev.data);
         switch (response.type) {
           case 'progress':
             const { current, total } = response;
-            progress && progress(current, total);
+            progress && (await progress(current, total));
             break;
           case 'result':
             this.socket!.onmessage = null;
@@ -111,12 +111,10 @@ export const useCloudExporter = () => {
       pipeline = new ExportExcelPipeline();
       await pipeline.load();
       pipeline.addFragments(...fragments);
-      const file = await pipeline
-        .exportExcel((current, total) => {
-          progress.current = current;
-          progress.total = total;
-        })
-        .catch(() => null);
+      const file = await pipeline.exportExcel((current, total) => {
+        progress.current = current;
+        progress.total = total;
+      });
       await pipeline.close();
 
       if (file) {
