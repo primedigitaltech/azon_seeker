@@ -4,7 +4,7 @@ import { uploadImage } from '~/logic/upload';
 import { detailItems, reviewItems, searchItems } from '~/storages/amazon';
 import { createGlobalState } from '@vueuse/core';
 import { useAmazonService } from '~/services/amazon';
-import { LanchTaskBaseOptions } from '../types';
+import { LanchTaskBaseOptions } from '../interfaces';
 
 export interface AmazonPageWorkerSettings {
   objects?: ('search' | 'detail' | 'review')[];
@@ -108,6 +108,9 @@ function buildAmazonPageWorker() {
         worker.on('item-aplus-screenshot-collect', async (ev) => {
           const url = await uploadImage(ev.base64data, `${ev.asin}.png`);
           url && updateDetailCache({ asin: ev.asin, aplus: url });
+        }),
+        worker.on('item-extra-info-collect', (ev) => {
+          updateDetailCache({ asin: ev.asin, ...ev.info });
         }),
         worker.on('item-review-collected', (ev) => {
           updateReviews(ev);

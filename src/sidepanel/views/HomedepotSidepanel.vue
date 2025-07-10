@@ -74,7 +74,6 @@ const handleInterrupt = () => {
       <optional-button v-if="!worker.isRunning.value" round size="large" @click="handleStart">
         <template #popover>
           <div class="setting-panel">
-            <div>设置</div>
             <n-form :label-width="50" label-placement="left" :show-feedback="false">
               <n-form-item label="评论:">
                 <n-switch v-model:value="detailWorkerSettings.review" />
@@ -127,12 +126,5 @@ const handleInterrupt = () => {
 .progress-report {
   margin-top: 10px;
   width: 95%;
-}
-
-.setting-panel {
-  > *:first-of-type {
-    font-size: larger;
-    margin-bottom: 5px;
-  }
 }
 </style>

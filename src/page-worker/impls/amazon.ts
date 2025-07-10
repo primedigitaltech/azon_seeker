@@ -1,4 +1,4 @@
-import type { AmazonPageWorker, AmazonPageWorkerEvents, LanchTaskBaseOptions } from '../types';
+import type { AmazonPageWorker, AmazonPageWorkerEvents, LanchTaskBaseOptions } from '../interfaces';
 import type { Tabs } from 'webextension-polyfill';
 import { withErrorHandling } from '../error-handler';
 import {
@@ -104,8 +104,12 @@ class AmazonPageWorkerImpl
   }
 
   @withErrorHandling
-  public async wanderDetailPage(entry: string, aplus: boolean = false) {
+  public async wanderDetailPage(
+    entry: string,
+    options: Parameters<typeof this.runDetailPageTask>[1] = {},
+  ) {
     //#region Initial Meta Info
+    const { aplus = false, extra = false } = options;
     const params = { asin: '', url: '' };
     if (entry.match(/^https?:\/\/www\.amazon\.com.*\/dp\/[A-Z0-9]{10}/)) {
       const [asin] = /\/\/dp\/[A-Z0-9]{10}/.exec(entry)!;
@@ -189,6 +193,12 @@ class AmazonPageWorkerImpl
       await this.emit('item-aplus-screenshot-collect', { asin: params.asin, base64data });
     }
     // #endregion
+    //#region Get Extra Info
+    if (extra) {
+      const extraInfo = await injector.getExtraInfo();
+      this.emit('item-extra-info-collect', { asin: params.asin, info: extraInfo });
+    }
+    //#endregion
   }
 
   @withErrorHandling
@@ -238,7 +248,7 @@ class AmazonPageWorkerImpl
 
   public async runDetailPageTask(
     asins: string[],
-    options: LanchTaskBaseOptions & { aplus?: boolean } = {},
+    options: LanchTaskBaseOptions & { aplus?: boolean; extra?: boolean } = {},
   ): Promise<void> {
     const { progress, aplus = false } = options;
     const remains = [...asins];
@@ -248,7 +258,7 @@ class AmazonPageWorkerImpl
     });
     while (remains.length > 0 && !interrupt) {
       const asin = remains.shift()!;
-      await this.wanderDetailPage(asin, aplus);
+      await this.wanderDetailPage(asin, options);
       progress && progress(remains);
     }
     unsubscribe();

@@ -23,15 +23,26 @@ watch(currentUrl, (newVal) => {
     switch (url.hostname) {
       case 'www.amazon.com':
         site.value = 'amazon';
-        router.push({ path: '/amazon' });
         break;
       case 'www.homedepot.com':
         site.value = 'homedepot';
-        router.push({ path: '/homedepot' });
         break;
       default:
         break;
     }
+  }
+});
+
+watch(site, (newVal) => {
+  switch (newVal) {
+    case 'amazon':
+      router.push('/amazon');
+      break;
+    case 'homedepot':
+      router.push('/homedepot');
+      break;
+    default:
+      break;
   }
 });
 </script>

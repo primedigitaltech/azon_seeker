@@ -12,6 +12,7 @@ import AutoImport from 'unplugin-auto-import/vite';
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
 import { isDev, outputDir, port, r } from './scripts/utils.js';
 import packageJson from './package.json';
+import Markdown from 'vite-plugin-md';
 
 export const sharedConfig: UserConfig = {
   root: r('src'),
@@ -23,9 +24,13 @@ export const sharedConfig: UserConfig = {
   define: {
     __DEV__: isDev,
     __NAME__: JSON.stringify(packageJson.name),
+    __VERSION__: JSON.stringify(packageJson.version),
   },
   plugins: [
-    Vue(),
+    Vue({
+      include: [/\.vue$/, /\.md$/],
+    }),
+    Markdown(),
     VueJsx(),
     AutoImport({
       imports: [

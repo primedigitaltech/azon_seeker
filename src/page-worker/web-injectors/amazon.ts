@@ -184,7 +184,11 @@ export class AmazonDetailPageInjector extends BaseInjector {
       const categories = document
         .querySelector<HTMLElement>('#wayfinding-breadcrumbs_feature_div')
         ?.innerText.replaceAll('\n', '');
-      return { title, price, boughtInfo, availableDate, categories };
+      const shipFrom = document.querySelector<HTMLElement>(
+        '#fulfillerInfoFeature_feature_div > *:last-of-type',
+      )?.innerText;
+      const soldBy = document.querySelector<HTMLElement>(`#sellerProfileTriggerId`)?.innerText;
+      return { title, price, boughtInfo, availableDate, categories, shipFrom, soldBy };
     });
   }
 
@@ -369,9 +373,6 @@ export class AmazonDetailPageInjector extends BaseInjector {
         }
         return nodes.length > 0 ? nodes : undefined;
       };
-      const shipFrom = document.querySelector<HTMLElement>(
-        '#fulfillerInfoFeature_feature_div > *:last-of-type',
-      )?.innerText;
       const abouts = $x(
         `//*[normalize-space(text())='About this item']/following-sibling::ul[1]/li`,
       )?.map((el) => el.innerText);
@@ -386,18 +387,16 @@ export class AmazonDetailPageInjector extends BaseInjector {
       const itemForm = $x(
         `//*[./span[normalize-space(text())='Item Form']]/following-sibling::*[1]`,
       )?.[0].innerText;
-      const productDemensions = $x(
+      const productDimensions = $x(
         `//span[contains(text(), 'Dimensions')]/following-sibling::*[1]`,
       )?.[0].innerText;
-
       return {
         abouts,
-        shipFrom,
         brand,
         flavor,
         unitCount,
         itemForm,
-        productDemensions,
+        productDimensions,
       };
     });
   }

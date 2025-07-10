@@ -65,8 +65,15 @@ const handleInterrupt = () => {
   <div class="review-page-entry">
     <header-title>Amazon Review</header-title>
     <div class="interative-section">
-      <ids-input v-model="reviewAsinInput" :disabled="worker.isRunning.value" ref="asin-input">
-        <template #extra-settings>
+      <ids-input v-model="reviewAsinInput" :disabled="worker.isRunning.value" ref="asin-input" />
+      <optional-button
+        v-if="!worker.isRunning.value"
+        round
+        size="large"
+        type="primary"
+        @click="handleStart"
+      >
+        <template #popover>
           <div class="setting-panel">
             <n-form label-placement="left">
               <n-form-item label="模式:" :feedback-style="{ display: 'none' }">
@@ -78,19 +85,11 @@ const handleInterrupt = () => {
             </n-form>
           </div>
         </template>
-      </ids-input>
-      <n-button
-        v-if="!worker.isRunning.value"
-        round
-        size="large"
-        type="primary"
-        @click="handleStart"
-      >
-        <template #icon>
+        <n-icon :size="20">
           <ant-design-thunderbolt-outlined />
-        </template>
+        </n-icon>
         开始
-      </n-button>
+      </optional-button>
       <n-button v-else round size="large" type="primary" @click="handleInterrupt">
         <template #icon>
           <ant-design-thunderbolt-outlined />

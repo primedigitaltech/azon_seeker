@@ -1,4 +1,4 @@
-import type { HomedepotEvents, HomedepotWorker, LanchTaskBaseOptions } from '../types';
+import type { HomedepotEvents, HomedepotWorker, LanchTaskBaseOptions } from '../interfaces';
 import { Tabs } from 'webextension-polyfill';
 import { withErrorHandling } from '../error-handler';
 import { HomedepotDetailPageInjector } from '../web-injectors/homedepot';

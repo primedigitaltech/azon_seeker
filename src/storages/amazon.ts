@@ -10,15 +10,14 @@ export const itemColumnSettings = useWebExtensionStorage<
   Set<keyof Pick<AmazonItem, 'keywords' | 'page' | 'rank' | 'createTime' | 'timestamp'>>
 >('itemColumnSettings', new Set(['keywords', 'page', 'rank', 'createTime']));
 
-export const detailWorkerSettings = useWebExtensionStorage<{ aplus: boolean }>(
-  'amazon-detail-worker-settings',
-  { aplus: false },
-);
+export const detailWorkerSettings = useWebExtensionStorage('amazon-detail-worker-settings', {
+  aplus: false,
+  extra: false,
+});
 
-export const reviewWorkerSettings = useWebExtensionStorage<{ recent: boolean }>(
-  'amazon-review-worker-settings',
-  { recent: true },
-);
+export const reviewWorkerSettings = useWebExtensionStorage('amazon-review-worker-settings', {
+  recent: true,
+});
 
 export const searchItems = useWebExtensionStorage<AmazonSearchItem[]>('searchItems', []);
 

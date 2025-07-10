@@ -150,6 +150,19 @@ const extraHeaders: Header<AmazonItem>[] = [
     prop: 'aplus',
     label: 'A+截图',
   },
+  { prop: 'shipFrom', label: '发货快递' },
+  { prop: 'soldBy', label: '卖家' },
+  { prop: 'brand', label: '品牌名称' },
+  { prop: 'flavor', label: '商品口味' },
+  { prop: 'unitCount', label: '商品单位数量' },
+  { prop: 'itemForm', label: '商品形态' },
+  { prop: 'productDimensions', label: '商品尺寸' },
+  {
+    prop: 'abouts',
+    label: '关于',
+    formatOutputValue: (val?: string[]) => val?.join('\n'),
+    parseImportValue: (val?: string) => val?.split('\n'),
+  },
 ];
 
 const getItemHeaders = () => {
@@ -223,45 +236,39 @@ const handleClearData = async () => {
 </script>
 
 <template>
-  <div class="result-table">
-    <result-table :columns="columns" :records="filteredData">
-      <template #header>
-        <n-space align="center">
-          <h3 class="header-text">Amazon Items</h3>
-          <n-switch size="small" class="filter-switch" v-model:value="filter.detailOnly">
-            <template #checked> 详情 </template>
-            <template #unchecked> 全部</template>
-          </n-switch>
-        </n-space>
-      </template>
-      <template #header-extra>
-        <n-space size="small">
-          <n-input
-            v-model:value="filter.search"
-            placeholder="输入文本过滤结果"
-            round
-            clearable
-            style="min-width: 230px"
-          />
-          <control-strip round @clear="handleClearData" @import="handleImport">
-            <template #exporter>
-              <export-panel @export-file="handleExport" />
-            </template>
-            <template #filter>
-              <div class="filter-section">
-                <div class="filter-title">筛选器</div>
-                <n-form
-                  :model="filter"
-                  label-placement="left"
-                  label-align="center"
-                  :label-width="95"
-                >
-                  <n-form-item label="关键词">
-                    <n-select
-                      placeholder=""
-                      v-model:value="filter.keywords"
-                      clearable
-                      :options="
+  <result-table :columns="columns" :records="filteredData">
+    <template #header>
+      <n-space align="center">
+        <h3 class="header-text">Amazon Items</h3>
+        <n-switch size="small" class="filter-switch" v-model:value="filter.detailOnly">
+          <template #checked> 详情 </template>
+          <template #unchecked> 全部</template>
+        </n-switch>
+      </n-space>
+    </template>
+    <template #header-extra>
+      <n-space size="small">
+        <n-input
+          v-model:value="filter.search"
+          placeholder="输入文本过滤结果"
+          round
+          clearable
+          style="min-width: 230px"
+        />
+        <control-strip round @clear="handleClearData" @import="handleImport">
+          <template #exporter>
+            <export-panel @export-file="handleExport" />
+          </template>
+          <template #filter>
+            <div class="filter-section">
+              <div class="filter-title">筛选器</div>
+              <n-form :model="filter" label-placement="left" label-align="center" :label-width="95">
+                <n-form-item label="关键词">
+                  <n-select
+                    placeholder=""
+                    v-model:value="filter.keywords"
+                    clearable
+                    :options="
                           Array.from(allItems.reduce((o, c) => {
                               c.keywords && o.add(c.keywords);
                               return o;
@@ -270,55 +277,55 @@ const handleClearData = async () => {
                             label: opt,
                             value: opt,
                           }))"
-                    />
-                  </n-form-item>
-                  <n-form-item label="日期(搜索页)">
-                    <n-date-picker
-                      type="datetimerange"
-                      clearable
-                      v-model:value="filter.searchDateRange"
-                    />
-                  </n-form-item>
-                  <n-form-item label="日期(详情页)">
-                    <n-date-picker
-                      type="datetimerange"
-                      clearable
-                      v-model:value="filter.detailDateRange"
-                    />
-                  </n-form-item>
-                  <n-form-item label="列展示">
-                    <n-checkbox-group
-                      :value="Array.from(itemColumnSettings)"
-                      @update:value="(val: any) => (itemColumnSettings = new Set(val) as any)"
-                    >
-                      <n-space item-style="display: flex;">
-                        <n-checkbox value="keywords" label="关键词" />
-                        <n-checkbox value="page" label="页码" />
-                        <n-checkbox value="rank" label="排位" />
-                        <n-checkbox value="createTime" label="获取日期" />
-                        <n-checkbox value="timestamp" label="获取日期（详情）" />
-                      </n-space>
-                    </n-checkbox-group>
-                  </n-form-item>
-                </n-form>
-                <div class="filter-footer" @click="onFilterReset"><n-button>重置</n-button></div>
-              </div>
-            </template>
-          </control-strip>
-        </n-space>
-      </template>
-    </result-table>
-  </div>
+                  />
+                </n-form-item>
+                <n-form-item label="日期(搜索页)">
+                  <n-date-picker
+                    type="datetimerange"
+                    clearable
+                    v-model:value="filter.searchDateRange"
+                  />
+                </n-form-item>
+                <n-form-item label="日期(详情页)">
+                  <n-date-picker
+                    type="datetimerange"
+                    clearable
+                    v-model:value="filter.detailDateRange"
+                  />
+                </n-form-item>
+                <n-form-item label="列展示">
+                  <n-checkbox-group
+                    :value="Array.from(itemColumnSettings)"
+                    @update:value="(val: any) => (itemColumnSettings = new Set(val) as any)"
+                  >
+                    <n-space item-style="display: flex;">
+                      <n-checkbox value="keywords" label="关键词" />
+                      <n-checkbox value="page" label="页码" />
+                      <n-checkbox value="rank" label="排位" />
+                      <n-checkbox value="createTime" label="获取日期" />
+                      <n-checkbox value="timestamp" label="获取日期（详情）" />
+                    </n-space>
+                  </n-checkbox-group>
+                </n-form-item>
+              </n-form>
+              <div class="filter-footer" @click="onFilterReset"><n-button>重置</n-button></div>
+            </div>
+          </template>
+        </control-strip>
+      </n-space>
+    </template>
+  </result-table>
 </template>
 
 <style scoped lang="scss">
 .result-table {
   width: 100%;
+  height: 100%;
+}
 
-  .header-text {
-    padding: 0px;
-    margin: 0px;
-  }
+.header-text {
+  padding: 0px;
+  margin: 0px;
 }
 
 :deep(.filter-switch) {

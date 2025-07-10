@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Size } from 'naive-ui/es/button/src/interface';
 
-const props = withDefaults(defineProps<{ disabled?: boolean; round?: boolean; size?: Size }>(), {});
+withDefaults(defineProps<{ disabled?: boolean; round?: boolean; size?: Size }>(), {});
 
 const emit = defineEmits<{ click: [ev: MouseEvent] }>();
 </script>
@@ -48,6 +48,10 @@ const emit = defineEmits<{ click: [ev: MouseEvent] }>();
 
     > button:first-of-type {
       width: 85%;
+
+      &:hover {
+        width: 88%;
+      }
     }
 
     > button:last-of-type {
@@ -60,6 +64,10 @@ const emit = defineEmits<{ click: [ev: MouseEvent] }>();
 
     &:has(> button:last-of-type:hover) > button:first-of-type {
       width: 80%;
+    }
+
+    &:has(> button:first-of-type:hover) > button:last-of-type {
+      width: 12%;
     }
   }
 }

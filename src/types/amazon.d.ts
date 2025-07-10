@@ -54,8 +54,22 @@ declare type AmazonDetailItem = {
   aplus?: string;
   // /** 顶部评论数组 */
   // topReviews?: AmazonReview[];
+  /** 发货快递 */
+  shipFrom?: string;
+  /** 卖家 */
+  soldBy?: string;
   /**关于信息 */
   abouts?: string[];
+  /** 品牌名称 */
+  brand?: string;
+  /** 商品口味/风味 */
+  flavor?: string;
+  /** 商品单位数量 */
+  unitCount?: string;
+  /** 商品形态/剂型 */
+  itemForm?: string;
+  /** 商品尺寸 */
+  productDimensions?: string;
 };
 
 declare type AmazonReview = BaseReview & {

@@ -173,11 +173,11 @@ const handleExport = async (opt: 'cloud' | 'local') => {
 <style scoped lang="scss">
 .result-table {
   width: 100%;
+}
 
-  .header-text {
-    padding: 0px;
-    margin: 0px;
-  }
+.header-text {
+  padding: 0px;
+  margin: 0px;
 }
 
 .expoter-progress-panel {

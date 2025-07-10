@@ -207,11 +207,11 @@ const handleClear = () => {
 <style lang="scss" scoped>
 .result-table {
   width: 100%;
+}
 
-  .header-text {
-    padding: 0px;
-    margin: 0px;
-  }
+.header-text {
+  padding: 0px;
+  margin: 0px;
 }
 
 .filter-panel {

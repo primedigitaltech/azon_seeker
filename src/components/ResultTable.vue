@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useElementBounding, useParentElement } from '@vueuse/core';
 import type { EllipsisProps } from 'naive-ui';
 
 export type TableColumn =
@@ -16,6 +17,17 @@ export type TableColumn =
       expandable: (row: any) => boolean;
       renderExpand: (row: any) => VNode;
     };
+
+const parentEl = useParentElement();
+const currentRootEl = useTemplateRef('result-table');
+const { height: parentHeight } = useElementBounding(parentEl);
+const tableHeight = computed(() => {
+  let contentHeight = 0;
+  currentRootEl.value?.childNodes.forEach((element) => {
+    contentHeight += (element as Element).getBoundingClientRect().height;
+  });
+  return ~~Math.max(parentHeight.value, contentHeight);
+});
 
 const props = withDefaults(
   defineProps<{
@@ -46,7 +58,7 @@ function generateUUID() {
 </script>
 
 <template>
-  <div class="result-table">
+  <div class="result-table" ref="result-table" :style="{ height: `${tableHeight}px` }">
     <n-card class="result-content-container">
       <template #header><slot name="header" /></template>
       <template #header-extra><slot name="header-extra" /></template>
@@ -81,13 +93,8 @@ function generateUUID() {
 </template>
 
 <style scoped lang="scss">
-.result-table {
-  width: 100%;
-  height: 100%;
-}
-
 .result-content-container {
-  min-height: 100%;
+  height: 100%;
   :deep(.n-card__content:has(.n-empty)) {
     display: flex;
     flex-direction: column;

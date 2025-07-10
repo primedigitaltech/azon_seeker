@@ -58,9 +58,17 @@ worker.on('item-images-collected', (ev) => {
 worker.on('item-aplus-screenshot-collect', (ev) => {
   timelines.value.push({
     type: 'success',
-    title: `商品${ev.asin} A+信息`,
+    title: `商品${ev.asin}的A+截图`,
     time: new Date().toLocaleString(),
-    content: `获取到A+信息`,
+    content: `获取到A+截图`,
+  });
+});
+worker.on('item-extra-info-collect', (ev) => {
+  timelines.value.push({
+    type: 'success',
+    title: `商品${ev.asin}额外信息`,
+    time: new Date().toLocaleString(),
+    content: `获取商品的额外信息`,
   });
 });
 //#endregion
@@ -80,6 +88,7 @@ const launch = async () => {
       detailAsinInput.value = remains.join('\n');
     },
     aplus: detailWorkerSettings.value.aplus,
+    extra: detailWorkerSettings.value.extra,
   });
   timelines.value.push({
     type: 'info',
@@ -104,33 +113,40 @@ const handleInterrupt = () => {
   <div class="detail-page-entry">
     <header-title>Amazon Detail</header-title>
     <div class="interative-section">
-      <ids-input v-model="detailAsinInput" :disabled="worker.isRunning.value" ref="asin-input">
-        <template #extra-settings>
-          <div class="setting-panel">
-            <n-form label-placement="left">
-              <n-form-item label="Aplus:" :feedback-style="{ display: 'none' }">
-                <n-switch v-model:value="detailWorkerSettings.aplus" />
-              </n-form-item>
-            </n-form>
-          </div>
-        </template>
-      </ids-input>
-      <n-button
+      <ids-input v-model="detailAsinInput" :disabled="worker.isRunning.value" ref="asin-input" />
+      <optional-button
         v-if="!worker.isRunning.value"
         round
         size="large"
         type="primary"
         @click="handleStart"
       >
-        <template #icon>
-          <ant-design-thunderbolt-outlined />
+        <template #popover>
+          <div class="setting-panel">
+            <n-form
+              label-placement="left"
+              :label-width="60"
+              label-align="center"
+              :show-feedback="false"
+            >
+              <n-form-item label="Aplus:">
+                <n-switch v-model:value="detailWorkerSettings.aplus" />
+              </n-form-item>
+              <n-form-item label="Extra:">
+                <n-switch v-model:value="detailWorkerSettings.extra" />
+              </n-form-item>
+            </n-form>
+          </div>
         </template>
+        <n-icon :size="20">
+          <ant-design-thunderbolt-outlined />
+        </n-icon>
         开始
-      </n-button>
+      </optional-button>
       <n-button v-else round size="large" type="primary" @click="handleInterrupt">
-        <template #icon>
+        <n-icon :size="20">
           <ant-design-thunderbolt-outlined />
-        </template>
+        </n-icon>
         停止
       </n-button>
     </div>
@@ -175,6 +191,6 @@ const handleInterrupt = () => {
 }
 
 .setting-panel {
-  padding: 7px 10px;
+  padding: 7px 5px;
 }
 </style>

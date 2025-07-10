@@ -13,6 +13,7 @@ const routeObj: Record<'sidepanel' | 'options', RouteRecordRaw[]> = {
     { path: '/amazon', component: () => import('~/options/views/AmazonResultTable.vue') },
     { path: '/amazon-reviews', component: () => import('~/options/views/AmazonReviews.vue') },
     { path: '/homedepot', component: () => import('~/options/views/HomedepotResultTable.vue') },
+    { path: '/help', component: () => import('~/options/views/help/guide.md') },
   ],
   sidepanel: [
     { path: '/', redirect: `/${site.value}` },
