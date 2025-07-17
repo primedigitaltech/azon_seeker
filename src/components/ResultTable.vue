@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useElementBounding, useParentElement } from '@vueuse/core';
 import type { EllipsisProps } from 'naive-ui';
 
 export type TableColumn =
@@ -17,17 +16,6 @@ export type TableColumn =
       expandable: (row: any) => boolean;
       renderExpand: (row: any) => VNode;
     };
-
-const parentEl = useParentElement();
-const currentRootEl = useTemplateRef('result-table');
-const { height: parentHeight } = useElementBounding(parentEl);
-const tableHeight = computed(() => {
-  let contentHeight = 0;
-  currentRootEl.value?.childNodes.forEach((element) => {
-    contentHeight += (element as Element).getBoundingClientRect().height;
-  });
-  return ~~Math.max(parentHeight.value, contentHeight);
-});
 
 const props = withDefaults(
   defineProps<{
@@ -58,8 +46,13 @@ function generateUUID() {
 </script>
 
 <template>
-  <div class="result-table" ref="result-table" :style="{ height: `${tableHeight}px` }">
-    <n-card class="result-content-container">
+  <div class="result-table">
+    <n-card
+      class="result-content-container"
+      ref="card"
+      header-class="result-table-header"
+      content-class="result-table-main-content"
+    >
       <template #header><slot name="header" /></template>
       <template #header-extra><slot name="header-extra" /></template>
       <n-empty v-if="itemView.records.length === 0" size="huge">
@@ -95,6 +88,11 @@ function generateUUID() {
 <style scoped lang="scss">
 .result-content-container {
   height: 100%;
+
+  :deep(*) {
+    transition-duration: 0ms;
+  }
+
   :deep(.n-card__content:has(.n-empty)) {
     display: flex;
     flex-direction: column;

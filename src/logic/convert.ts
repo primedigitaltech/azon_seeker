@@ -1,3 +1,5 @@
+/** 数据转换工具类 */
+
 export function flattenObject(obj: Record<string, unknown>) {
   const mappedEnties: [string[], unknown][] = [];
   const stack: string[][] = Object.keys(obj).map((k) => [k]);

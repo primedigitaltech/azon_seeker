@@ -1,8 +1,9 @@
-import type { HomedepotEvents, HomedepotWorker, LanchTaskBaseOptions } from '../interfaces';
 import { Tabs } from 'webextension-polyfill';
 import { withErrorHandling } from '../error-handler';
 import { HomedepotDetailPageInjector } from '../web-injectors/homedepot';
 import { BaseWorker } from './base';
+import { LanchTaskBaseOptions } from '../interfaces/common';
+import { HomedepotEvents, HomedepotWorker } from '../interfaces/homedepot';
 
 class HomedepotWorkerImpl
   extends BaseWorker<HomedepotEvents & { interrupt: undefined }>

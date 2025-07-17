@@ -10,9 +10,11 @@ import IconsResolver from 'unplugin-icons/resolver';
 import Components from 'unplugin-vue-components/vite';
 import AutoImport from 'unplugin-auto-import/vite';
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
+import Markdown from 'unplugin-vue-markdown/vite';
+import MarkdownItAnchor from 'markdown-it-anchor';
+import markdownItTocDoneRight from 'markdown-it-toc-done-right';
 import { isDev, outputDir, port, r } from './scripts/utils.js';
 import packageJson from './package.json';
-import Markdown from 'vite-plugin-md';
 
 export const sharedConfig: UserConfig = {
   root: r('src'),
@@ -30,7 +32,12 @@ export const sharedConfig: UserConfig = {
     Vue({
       include: [/\.vue$/, /\.md$/],
     }),
-    Markdown(),
+    Markdown({
+      markdownItSetup(md) {
+        md.use(MarkdownItAnchor, {});
+        md.use(markdownItTocDoneRight);
+      },
+    }),
     VueJsx(),
     AutoImport({
       imports: [

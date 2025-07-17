@@ -1,3 +1,4 @@
+/** 上传图片工具类 */
 import { remoteHost } from '~/env';
 
 export async function uploadImage(

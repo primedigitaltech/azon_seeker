@@ -1,3 +1,5 @@
+/** 内容脚本注入工具类 */
+
 type ExecOptions = {
   timeout?: number;
 };

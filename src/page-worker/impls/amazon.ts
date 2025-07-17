@@ -1,4 +1,3 @@
-import type { AmazonPageWorker, AmazonPageWorkerEvents, LanchTaskBaseOptions } from '../interfaces';
 import type { Tabs } from 'webextension-polyfill';
 import { withErrorHandling } from '../error-handler';
 import {
@@ -8,6 +7,8 @@ import {
 } from '../web-injectors/amazon';
 import { isForbiddenUrl } from '~/env';
 import { BaseWorker } from './base';
+import { AmazonPageWorker, AmazonPageWorkerEvents } from '../interfaces/amazon';
+import { LanchTaskBaseOptions } from '../interfaces/common';
 
 /**
  * AmazonPageWorkerImpl can run on background & sidepanel & popup,
@@ -250,7 +251,7 @@ class AmazonPageWorkerImpl
     asins: string[],
     options: LanchTaskBaseOptions & { aplus?: boolean; extra?: boolean } = {},
   ): Promise<void> {
-    const { progress, aplus = false } = options;
+    const { progress } = options;
     const remains = [...asins];
     let interrupt = false;
     const unsubscribe = this.on('interrupt', () => {

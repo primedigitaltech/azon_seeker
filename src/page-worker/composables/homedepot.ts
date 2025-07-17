@@ -2,6 +2,8 @@ import { useLongTask } from '~/composables/useLongTask';
 import { detailItems as homedepotDetailItems } from '~/storages/homedepot';
 import homedepot from '../impls/homedepot';
 import { createGlobalState } from '@vueuse/core';
+import { WorkerComposable } from '../interfaces/common';
+import { HomedepotWorker } from '../interfaces/homedepot';
 
 export interface HomedepotWorkerSettings {
   objects?: 'detail'[];
@@ -77,7 +79,7 @@ function buildHomedepotWorker() {
     off: worker.off.bind(worker),
     once: worker.once.bind(worker),
     stop: worker.stop.bind(worker),
-  };
+  } as WorkerComposable<HomedepotWorker, HomedepotWorkerSettings>;
 }
 
 export const useHomedepotWorker = createGlobalState(buildHomedepotWorker);

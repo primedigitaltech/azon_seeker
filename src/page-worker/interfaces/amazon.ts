@@ -1,8 +1,4 @@
-import type Emittery from 'emittery';
-
-type Listener<T> = Pick<Emittery<T>, 'on' | 'off' | 'once'>;
-
-export type LanchTaskBaseOptions = { progress?: (remains: string[]) => Promise<void> | void };
+import { LanchTaskBaseOptions, Listener } from './common';
 
 export interface AmazonPageWorkerEvents {
   /** The event is fired when worker collected links to items on the Amazon search page. */
@@ -53,14 +49,14 @@ export interface AmazonPageWorkerEvents {
 
 export interface AmazonPageWorker extends Listener<AmazonPageWorkerEvents> {
   /**
-   * Browsing goods search page and collect links to those goods.
+   * Browsing item search pages and collect links to those items.
    * @param keywordsList - The keywords list to search for on Amazon.
    * @param options The Options Specify Behaviors.
    */
   runSearchPageTask(keywordsList: string[], options?: LanchTaskBaseOptions): Promise<void>;
 
   /**
-   * Browsing goods detail page and collect target information.
+   * Browsing item detail pages and collect target information.
    * @param asins Amazon Standard Identification Numbers.
    * @param options The Options Specify Behaviors.
    */
@@ -70,7 +66,7 @@ export interface AmazonPageWorker extends Listener<AmazonPageWorkerEvents> {
   ): Promise<void>;
 
   /**
-   * Browsing goods review page and collect target information.
+   * Browsing item review pages and collect target information.
    * @param asins Amazon Standard Identification Numbers.
    * @param options The Options Specify Behaviors.
    */
@@ -78,57 +74,6 @@ export interface AmazonPageWorker extends Listener<AmazonPageWorkerEvents> {
     asins: string[],
     options?: LanchTaskBaseOptions & { recent?: boolean },
   ): Promise<void>;
-
-  /**
-   * Stop the worker.
-   */
-  stop(): Promise<void>;
-}
-
-export interface HomedepotEvents {
-  /** The event is fired when detail items collect */
-  ['detail-item-collected']: { item: HomedepotDetailItem };
-
-  /** The event is fired when reviews collect */
-  ['review-collected']: { reviews: HomedepotReview[] };
-
-  /** The event is fired when error occurs. */
-  ['error']: { message: string; url?: string };
-}
-
-export interface HomedepotWorker extends Listener<HomedepotEvents> {
-  /**
-   * Browsing goods detail page and collect target information
-   */
-  runDetailPageTask(
-    OSMIDs: string[],
-    options?: LanchTaskBaseOptions & { review?: boolean },
-  ): Promise<void>;
-
-  /**
-   * Stop the worker.
-   */
-  stop(): Promise<void>;
-}
-
-export interface LowesEvents {
-  /** The event is fired when detail items collect */
-  ['detail-item-collected']: { item: LowesDetailItem };
-
-  /** The event is fired when error occurs. */
-  ['error']: { message: string; url?: string };
-}
-
-export interface LowesWorker {
-  /**
-   * The channel for communication with the Lowes page worker.
-   */
-  readonly channel: Emittery<LowesEvents>;
-
-  /**
-   * Browsing goods detail page and collect target information
-   */
-  runDetailPageTask(urls: string[], options?: LanchTaskBaseOptions): Promise<void>;
 
   /**
    * Stop the worker.
