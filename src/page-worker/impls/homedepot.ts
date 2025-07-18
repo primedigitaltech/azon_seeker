@@ -1,5 +1,5 @@
 import { Tabs } from 'webextension-polyfill';
-import { withErrorHandling } from '../error-handler';
+import { withErrorHandling } from '../utils/error-handler';
 import { HomedepotDetailPageInjector } from '../web-injectors/homedepot';
 import { BaseWorker } from './base';
 import { LanchTaskBaseOptions } from '../interfaces/common';

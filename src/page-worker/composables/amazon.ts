@@ -3,7 +3,7 @@ import amazon from '../impls/amazon';
 import { uploadImage } from '~/logic/upload-image';
 import { detailItems, reviewItems, searchItems } from '~/storages/amazon';
 import { createGlobalState } from '@vueuse/core';
-import { useAmazonService } from '~/services/amazon';
+import { useAmazonService } from '~/page-worker/services/amazon';
 import { LanchTaskBaseOptions, WorkerComposable } from '../interfaces/common';
 import { AmazonPageWorker } from '../interfaces/amazon';
 
@@ -14,7 +14,7 @@ export interface AmazonPageWorkerSettings {
 }
 
 /** Main function to build the Amazon page worker composable */
-function buildAmazonPageWorker() {
+function buildAmazonPageWorker(): WorkerComposable<AmazonPageWorker, AmazonPageWorkerSettings> {
   // Reactive settings object
   const settings = shallowRef<AmazonPageWorkerSettings>({});
   // Long task management
@@ -216,7 +216,7 @@ function buildAmazonPageWorker() {
     off: worker.off.bind(worker),
     once: worker.once.bind(worker),
     stop: worker.stop.bind(worker),
-  } as WorkerComposable<AmazonPageWorker, AmazonPageWorkerSettings>;
+  };
 }
 
 /** Create a global state composable for the Amazon worker */

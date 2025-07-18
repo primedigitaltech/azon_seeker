@@ -10,7 +10,7 @@ export interface HomedepotWorkerSettings {
   commitChangeIngerval?: number;
 }
 
-function buildHomedepotWorker() {
+function buildHomedepotWorker(): WorkerComposable<HomedepotWorker, HomedepotWorkerSettings> {
   const settings = shallowRef<HomedepotWorkerSettings>({});
   const worker = homedepot.getHomedepotWorker();
   const { isRunning, startTask } = useLongTask();
@@ -79,7 +79,7 @@ function buildHomedepotWorker() {
     off: worker.off.bind(worker),
     once: worker.once.bind(worker),
     stop: worker.stop.bind(worker),
-  } as WorkerComposable<HomedepotWorker, HomedepotWorkerSettings>;
+  };
 }
 
 export const useHomedepotWorker = createGlobalState(buildHomedepotWorker);

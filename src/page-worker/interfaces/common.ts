@@ -2,7 +2,9 @@ import type Emittery from 'emittery';
 
 export type Listener<T> = Pick<Emittery<T>, 'on' | 'off' | 'once'>;
 
-export type LanchTaskBaseOptions = { progress?: (remains: string[]) => Promise<void> | void };
+export interface LanchTaskBaseOptions {
+  progress?: (remains: string[]) => Promise<void> | void;
+}
 
 export interface LowesEvents {
   /** The event is fired when detail items collect */
