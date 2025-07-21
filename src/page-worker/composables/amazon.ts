@@ -4,7 +4,7 @@ import { uploadImage } from '~/logic/upload-image';
 import { detailItems, reviewItems, searchItems } from '~/storages/amazon';
 import { createGlobalState } from '@vueuse/core';
 import { useAmazonService } from '~/page-worker/services/amazon';
-import { LanchTaskBaseOptions, WorkerComposable } from '../interfaces/common';
+import { taskOptionBase, WorkerComposable } from '../interfaces/common';
 import { AmazonPageWorker } from '../interfaces/amazon';
 
 /** Settings interface for the Amazon page worker */
@@ -175,7 +175,7 @@ function buildAmazonPageWorker(): WorkerComposable<AmazonPageWorker, AmazonPageW
   /**
    * Task wrapper: commit changes at the end of each progress step
    */
-  const taskWrapper2 = <T extends (input: any, options?: LanchTaskBaseOptions) => Promise<void>>(
+  const taskWrapper2 = <T extends (input: any, options?: taskOptionBase) => Promise<void>>(
     func: T,
   ) => {
     clearAllCaches();

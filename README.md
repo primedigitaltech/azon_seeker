@@ -8,7 +8,7 @@ Azon Seeker is a browser extension designed to collect and manage product inform
 
 ## Features
 
-- 🛒 **Collect Amazon Product Data:** Easily gather product details and reviews from Amazon pages.
+- 🛒 **Collect Product Data:** Easily gather product details and reviews from Amazon and other websites.
 - 📦 **Import/Export:** Supports importing and exporting data in Excel format for further analysis.
 - ☁️ **Cloud Export:** Export your data to the cloud for backup or sharing.
 - 📊 **Data Table:** View, filter, and manage collected data in a user-friendly table.
@@ -51,3 +51,23 @@ pnpm dev
 1. Open the browser extension page.
 2. Toggle on development mode.
 3. Load the extension using the `extension/` folder.
+
+## Build
+
+### 1. Make Sure Setup Successfully
+
+Following the step of setup
+
+### 2. Build Project
+
+```shell
+pnpm run build
+```
+
+### 3. Pack Extension
+
+```shell
+pnpm run pack:7z
+```
+
+After the build is completed, the extension package will be generated in `build/extension.7z`

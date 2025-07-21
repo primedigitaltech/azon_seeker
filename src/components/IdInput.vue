@@ -27,7 +27,7 @@ const formItemRule: FormItemRule = {
   trigger: ['submit', 'blur'],
   message: props.validateMessage,
   validator: () => {
-    return props.matchPattern.exec(modelValue.value) !== null;
+    return modelValue.value.match(props.matchPattern) !== null;
   },
 };
 
@@ -81,7 +81,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="ids-input">
+  <div class="id-input">
     <div class="header">
       <span>
         <n-button @click="fileDialog.open()" :disabled="disabled" round size="small">

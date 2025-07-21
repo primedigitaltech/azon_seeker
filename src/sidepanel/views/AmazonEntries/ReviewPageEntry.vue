@@ -65,7 +65,7 @@ const handleInterrupt = () => {
   <div class="review-page-entry">
     <header-title>Amazon Review</header-title>
     <div class="interative-section">
-      <ids-input v-model="reviewAsinInput" :disabled="worker.isRunning.value" ref="asin-input" />
+      <id-input v-model="reviewAsinInput" :disabled="worker.isRunning.value" ref="asin-input" />
       <optional-button
         v-if="!worker.isRunning.value"
         round

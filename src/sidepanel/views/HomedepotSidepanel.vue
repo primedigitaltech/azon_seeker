@@ -63,7 +63,7 @@ const handleInterrupt = () => {
   <div class="homedepot-sidepanel">
     <header-title>Homedepot</header-title>
     <div class="interative-section">
-      <ids-input
+      <id-input
         v-model="detailInputText"
         :disabled="worker.isRunning.value"
         ref="id-input"

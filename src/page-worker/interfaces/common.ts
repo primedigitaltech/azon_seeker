@@ -2,7 +2,7 @@ import type Emittery from 'emittery';
 
 export type Listener<T> = Pick<Emittery<T>, 'on' | 'off' | 'once'>;
 
-export interface LanchTaskBaseOptions {
+export interface taskOptionBase {
   progress?: (remains: string[]) => Promise<void> | void;
 }
 
@@ -21,9 +21,9 @@ export interface LowesWorker {
   readonly channel: Emittery<LowesEvents>;
 
   /**
-   * Browsing goods detail page and collect target information
+   * Browsing item detail page and collect target information
    */
-  runDetailPageTask(urls: string[], options?: LanchTaskBaseOptions): Promise<void>;
+  runDetailPageTask(urls: string[], options?: taskOptionBase): Promise<void>;
 
   /**
    * Stop the worker.

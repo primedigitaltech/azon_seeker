@@ -1,4 +1,4 @@
-import { LanchTaskBaseOptions, Listener } from './common';
+import { taskOptionBase, Listener } from './common';
 
 export interface AmazonPageWorkerEvents {
   /** The event is fired when worker collected links to items on the Amazon search page. */
@@ -53,7 +53,7 @@ export interface AmazonPageWorker extends Listener<AmazonPageWorkerEvents> {
    * @param keywordsList - The keywords list to search for on Amazon.
    * @param options The Options Specify Behaviors.
    */
-  runSearchPageTask(keywordsList: string[], options?: LanchTaskBaseOptions): Promise<void>;
+  runSearchPageTask(keywordsList: string[], options?: taskOptionBase): Promise<void>;
 
   /**
    * Browsing item detail pages and collect target information.
@@ -62,7 +62,7 @@ export interface AmazonPageWorker extends Listener<AmazonPageWorkerEvents> {
    */
   runDetailPageTask(
     asins: string[],
-    options?: LanchTaskBaseOptions & { aplus?: boolean; extra?: boolean },
+    options?: taskOptionBase & { aplus?: boolean; extra?: boolean },
   ): Promise<void>;
 
   /**
@@ -72,7 +72,7 @@ export interface AmazonPageWorker extends Listener<AmazonPageWorkerEvents> {
    */
   runReviewPageTask(
     asins: string[],
-    options?: LanchTaskBaseOptions & { recent?: boolean },
+    options?: taskOptionBase & { recent?: boolean },
   ): Promise<void>;
 
   /**

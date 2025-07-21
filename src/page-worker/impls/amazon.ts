@@ -8,7 +8,7 @@ import {
 import { isForbiddenUrl } from '~/env';
 import { BaseWorker } from './base';
 import { AmazonPageWorker, AmazonPageWorkerEvents } from '../interfaces/amazon';
-import { LanchTaskBaseOptions } from '../interfaces/common';
+import { taskOptionBase } from '../interfaces/common';
 
 /**
  * AmazonPageWorkerImpl can run on background & sidepanel & popup,
@@ -230,7 +230,7 @@ class AmazonPageWorkerImpl
 
   public async runSearchPageTask(
     keywordsList: string[],
-    options: LanchTaskBaseOptions = {},
+    options: taskOptionBase = {},
   ): Promise<void> {
     const { progress } = options;
     let remains = [...keywordsList];
@@ -249,7 +249,7 @@ class AmazonPageWorkerImpl
 
   public async runDetailPageTask(
     asins: string[],
-    options: LanchTaskBaseOptions & { aplus?: boolean; extra?: boolean } = {},
+    options: taskOptionBase & { aplus?: boolean; extra?: boolean } = {},
   ): Promise<void> {
     const { progress } = options;
     const remains = [...asins];
@@ -267,7 +267,7 @@ class AmazonPageWorkerImpl
 
   public async runReviewPageTask(
     asins: string[],
-    options: LanchTaskBaseOptions & { recent?: boolean } = {},
+    options: taskOptionBase & { recent?: boolean } = {},
   ): Promise<void> {
     const { progress } = options;
     const remains = [...asins];

@@ -2,7 +2,7 @@ import { Tabs } from 'webextension-polyfill';
 import { withErrorHandling } from '../utils/error-handler';
 import { HomedepotDetailPageInjector } from '../web-injectors/homedepot';
 import { BaseWorker } from './base';
-import { LanchTaskBaseOptions } from '../interfaces/common';
+import { taskOptionBase } from '../interfaces/common';
 import { HomedepotEvents, HomedepotWorker } from '../interfaces/homedepot';
 
 class HomedepotWorkerImpl
@@ -62,7 +62,7 @@ class HomedepotWorkerImpl
 
   async runDetailPageTask(
     OSMIDs: string[],
-    options: LanchTaskBaseOptions & { review?: boolean } = {},
+    options: taskOptionBase & { review?: boolean } = {},
   ): Promise<void> {
     const { progress, review } = options;
     const remains = [...OSMIDs];

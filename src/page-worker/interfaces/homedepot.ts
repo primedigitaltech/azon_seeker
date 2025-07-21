@@ -1,4 +1,4 @@
-import { LanchTaskBaseOptions, Listener } from './common';
+import { taskOptionBase, Listener } from './common';
 
 export interface HomedepotEvents {
   /** The event is fired when detail items collect */
@@ -17,7 +17,7 @@ export interface HomedepotWorker extends Listener<HomedepotEvents> {
    */
   runDetailPageTask(
     OSMIDs: string[],
-    options?: LanchTaskBaseOptions & { review?: boolean },
+    options?: taskOptionBase & { review?: boolean },
   ): Promise<void>;
 
   /**
