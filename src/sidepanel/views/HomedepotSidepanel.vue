@@ -15,6 +15,14 @@ worker.on('detail-item-collected', ({ item }) => {
     time: new Date().toLocaleString(),
   });
 });
+worker.on('review-collected', ({ OSMID, reviews }) => {
+  timelines.value.push({
+    type: 'success',
+    title: `成功`,
+    content: `成功获取到${OSMID}的${reviews.length}条评论`,
+    time: new Date().toLocaleString(),
+  });
+});
 
 const timelines = ref<Timeline[]>([]);
 

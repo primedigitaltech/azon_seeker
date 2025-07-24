@@ -13,6 +13,7 @@ const options: { label: string; value: string }[] = [
   { label: 'Amazon', value: '/amazon' },
   { label: 'Amazon Review', value: '/amazon-reviews' },
   { label: 'Homedepot', value: '/homedepot' },
+  { label: 'Homedepot Review', value: '/homedepot-reviews' },
 ];
 
 watch(opt, (val) => {

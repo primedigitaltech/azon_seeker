@@ -1,5 +1,5 @@
 import { useLongTask } from '~/composables/useLongTask';
-import { detailItems as homedepotDetailItems } from '~/storages/homedepot';
+import { detailItems, reviewItems } from '~/storages/homedepot';
 import homedepot from '../impls/homedepot';
 import { createGlobalState } from '@vueuse/core';
 import { WorkerComposable } from '../interfaces/common';
@@ -16,45 +16,63 @@ function buildHomedepotWorker(): WorkerComposable<HomedepotWorker, HomedepotWork
   const { isRunning, startTask } = useLongTask();
 
   const detailCache = new Map<string, HomedepotDetailItem>();
+  const reviewCache = new Map<string, HomedepotReview[]>();
 
-  const unsubscribeFuncs = [] as (() => void)[];
+  function registerWorkerEvents() {
+    const unsubscribes = [
+      worker.on('error', () => {
+        worker.stop();
+      }),
+      worker.on('detail-item-collected', (ev) => {
+        const { item } = ev;
+        if (detailCache.has(item.OSMID)) {
+          const origin = detailCache.get(item.OSMID);
+          detailCache.set(item.OSMID, { ...origin, ...item });
+        } else {
+          detailCache.set(item.OSMID, item);
+        }
+      }),
+      worker.on('review-collected', (ev) => {
+        const { OSMID, reviews } = ev;
+        reviewCache.set(OSMID, (reviewCache.get(OSMID) || []).concat(reviews));
+      }),
+    ];
+    return () => {
+      unsubscribes.forEach((unsubscribe) => unsubscribe());
+    };
+  }
 
-  onMounted(() => {
-    unsubscribeFuncs.push(
-      ...[
-        worker.on('error', () => {
-          worker.stop();
-        }),
-        worker.on('detail-item-collected', (ev) => {
-          const { item } = ev;
-          if (detailCache.has(item.OSMID)) {
-            const origin = detailCache.get(item.OSMID);
-            detailCache.set(item.OSMID, { ...origin, ...item });
-          } else {
-            detailCache.set(item.OSMID, item);
-          }
-        }),
-      ],
-    );
-  });
+  const unsubscribe = registerWorkerEvents();
 
   onUnmounted(() => {
-    unsubscribeFuncs.forEach((unsubscribe) => unsubscribe());
-    unsubscribeFuncs.splice(0, unsubscribeFuncs.length);
+    unsubscribe();
   });
 
   const commitChange = () => {
     const { objects } = settings.value;
     if (objects?.includes('detail')) {
       for (const [k, v] of detailCache.entries()) {
-        if (homedepotDetailItems.value.has(k)) {
-          const origin = homedepotDetailItems.value.get(k)!;
-          homedepotDetailItems.value.set(k, { ...origin, ...v });
+        if (detailItems.value.has(k)) {
+          const origin = detailItems.value.get(k)!;
+          detailItems.value.set(k, { ...origin, ...v });
         } else {
-          homedepotDetailItems.value.set(k, v);
+          detailItems.value.set(k, v);
         }
       }
       detailCache.clear();
+      for (const [k, v] of reviewCache.entries()) {
+        if (reviewItems.value.has(k)) {
+          const uid = (x: HomedepotReview) => `${x.username}-${x.title}`;
+          const addedUids = new Set(v.map(uid));
+          const origin = reviewItems.value.get(k)!;
+          const newReviews = origin.filter((x) => !addedUids.has(uid(x))).concat(v);
+          newReviews.sort((a, b) => dayjs(b.dateInfo).diff(dayjs(a.dateInfo)));
+          reviewItems.value.set(k, newReviews);
+        } else {
+          reviewItems.value.set(k, v);
+        }
+      }
+      reviewCache.clear();
     }
   };
 

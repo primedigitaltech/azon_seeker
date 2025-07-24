@@ -5,7 +5,7 @@ export interface HomedepotEvents {
   ['detail-item-collected']: { item: HomedepotDetailItem };
 
   /** The event is fired when reviews collect */
-  ['review-collected']: { reviews: HomedepotReview[] };
+  ['review-collected']: { OSMID: string; reviews: HomedepotReview[] };
 
   /** The event is fired when error occurs. */
   ['error']: { message: string; url?: string };

@@ -114,7 +114,7 @@ export class HomedepotDetailPageInjector extends BaseInjector {
         'script#thd-helmet__script--productStructureData',
       )!.innerText;
       const obj = JSON.parse(text);
-      return obj['image'] as string[];
+      return (obj['image'] as string[]).map((url) => url.slice(1, -1));
     });
   }
 
@@ -125,6 +125,7 @@ export class HomedepotDetailPageInjector extends BaseInjector {
         document
           .querySelector("#product-section-rr div[role='button']")
           ?.scrollIntoView({ behavior: 'smooth' });
+        document.querySelector<HTMLElement>('li:not(.sui-border-accent) .navlink-rr')?.click();
         if (el && el.getClientRects().length > 0 && el.getClientRects()[0].height > 0) {
           el?.scrollIntoView({ behavior: 'smooth' });
           break;
@@ -151,8 +152,9 @@ export class HomedepotDetailPageInjector extends BaseInjector {
         const badges = Array.from(
           root.querySelectorAll<HTMLElement>('.review-status-icons__list, li.review-badge > *'),
         )
-          .map((el) => el.innerText)
-          .filter((t) => !["(What's this?)"].includes(t));
+          .map((el) => el.innerText.trim())
+          .filter((t) => !["(What's this?)"].includes(t))
+          .filter((t) => t.length !== 0);
         const imageUrls = Array.from(
           root.querySelectorAll<HTMLElement>('.media-carousel__media > button'),
         ).map((el) => el.style.backgroundImage.split(/[\(\)]/, 3)[1]);
@@ -163,6 +165,7 @@ export class HomedepotDetailPageInjector extends BaseInjector {
 
   public tryJumpToNextPage() {
     return this.run(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       const final = document.querySelector<HTMLElement>(
         '.pager__summary--bold:nth-last-of-type(2)',
       )!.innerText;

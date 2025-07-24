@@ -90,9 +90,9 @@ function buildAmazonPageWorker(): WorkerComposable<AmazonPageWorker, AmazonPageW
     if (objects?.includes('review')) {
       for (const [asin, reviews] of reviewCache.entries()) {
         if (reviewItems.value.has(asin)) {
-          const addIds = new Set(reviews.map((x) => x.id));
+          const addedIds = new Set(reviews.map((x) => x.id));
           const origin = reviewItems.value.get(asin)!;
-          const newReviews = origin.filter((x) => !addIds.has(x.id)).concat(reviews);
+          const newReviews = origin.filter((x) => !addedIds.has(x.id)).concat(reviews);
           newReviews.sort((a, b) => dayjs(b.dateInfo).diff(dayjs(a.dateInfo)));
           reviewItems.value.set(asin, newReviews);
         } else {
@@ -104,12 +104,9 @@ function buildAmazonPageWorker(): WorkerComposable<AmazonPageWorker, AmazonPageW
     }
   };
 
-  // Store unsubscribe functions for worker events
-  const unsubscribes: (() => void)[] = [];
-
   // Register all relevant worker event handlers
   function registerWorkerEvents() {
-    return [
+    const unsubscribes = [
       // Stop worker on error
       worker.on('error', () => {
         worker.stop();
@@ -144,17 +141,18 @@ function buildAmazonPageWorker(): WorkerComposable<AmazonPageWorker, AmazonPageW
         updateReviewCache(ev);
       }),
     ];
+
+    return () => {
+      unsubscribes.forEach((unsubscribe) => unsubscribe());
+    };
   }
 
   // Register event handlers on mount
-  onMounted(() => {
-    unsubscribes.push(...registerWorkerEvents());
-  });
+  const unsbuscribe = registerWorkerEvents();
 
   // Unregister event handlers on unmount
   onUnmounted(() => {
-    unsubscribes.forEach((unsubscribe) => unsubscribe());
-    unsubscribes.splice(0, unsubscribes.length);
+    unsbuscribe();
   });
 
   /**

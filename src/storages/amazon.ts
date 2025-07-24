@@ -24,17 +24,11 @@ export const searchItems = useWebExtensionStorage<AmazonSearchItem[]>('searchIte
 export const detailItems = useWebExtensionStorage<Map<string, AmazonDetailItem>>(
   'detailItems',
   new Map(),
-  {
-    listenToStorageChanges: 'options',
-  },
 );
 
 export const reviewItems = useWebExtensionStorage<Map<string, AmazonReview[]>>(
   'reviewItems',
   new Map(),
-  {
-    listenToStorageChanges: 'options',
-  },
 );
 
 export const allItems = computed<AmazonItem[]>({

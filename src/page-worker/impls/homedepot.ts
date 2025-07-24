@@ -50,10 +50,10 @@ class HomedepotWorkerImpl
     }
     await injector.waitForReviewLoad();
     const reviews = await injector.getReviews();
-    await this.emit('review-collected', { reviews });
+    await this.emit('review-collected', { OSMID, reviews });
     while (await injector.tryJumpToNextPage()) {
       const reviews = await injector.getReviews();
-      await this.emit('review-collected', { reviews });
+      await this.emit('review-collected', { OSMID, reviews });
     }
     setTimeout(() => {
       browser.tabs.remove(tab.id!);
