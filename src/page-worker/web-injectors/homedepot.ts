@@ -63,23 +63,23 @@ export class HomedepotDetailPageInjector extends BaseInjector {
   public getInfo() {
     return this.run(async () => {
       const link = document.location.toString();
-      const brandName = document.querySelector<HTMLDivElement>(
+      const brandName = document.querySelector<HTMLElement>(
         `[data-component^="product-details:ProductDetailsBrandCollection"]`,
       )?.innerText;
-      const title = document.querySelector<HTMLDivElement>(
+      const title = document.querySelector<HTMLElement>(
         `[data-component^="product-details:ProductDetailsTitle"]`,
       )!.innerText;
       const price = document
-        .querySelector<HTMLDivElement>(`#standard-price`)!
+        .querySelector<HTMLElement>(`#standard-price`)!
         .innerText.replaceAll('\n', '');
-      const rateEl = document.querySelector<HTMLDivElement>(
+      const rateEl = document.querySelector<HTMLElement>(
         `[data-component^="ratings-and-reviews"] .sui-mr-1`,
       );
       const rate = rateEl ? /\d(\.\d)?/.exec(rateEl.innerText)![0] : undefined;
       const reviewCount = rateEl
         ? Number(
             /\d+/.exec(
-              document.querySelector<HTMLDivElement>(
+              document.querySelector<HTMLElement>(
                 `[data-component^="ratings-and-reviews"] [name="simple-rating"] + span`,
               )!.innerText,
             )![0],
@@ -93,7 +93,7 @@ export class HomedepotDetailPageInjector extends BaseInjector {
         document,
         null,
         XPathResult.FIRST_ORDERED_NODE_TYPE,
-      ).singleNodeValue as HTMLDivElement | null;
+      ).singleNodeValue as HTMLElement | null;
       const [modelInfo] = /(?<=#\s).+/.exec(modelInfoEl?.innerText || '') || [];
       return {
         link,
@@ -138,6 +138,17 @@ export class HomedepotDetailPageInjector extends BaseInjector {
 
   public getReviews() {
     return this.run(async () => {
+      const noReview = Boolean(
+        document.evaluate(
+          `//span[text() = 'Write the First Review']`,
+          document,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+        ).singleNodeValue,
+      );
+      if (noReview) {
+        return [];
+      }
       const elements = document.querySelectorAll('.review_item');
       return Array.from(elements).map((root) => {
         const title = root.querySelector<HTMLElement>('.review-content__title')!.innerText;

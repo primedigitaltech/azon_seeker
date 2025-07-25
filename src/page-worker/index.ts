@@ -11,7 +11,7 @@ export function usePageWorker(
   settings?: HomedepotWorkerSettings,
 ): ReturnType<typeof useHomedepotWorker>;
 export function usePageWorker(
-  type: 'homedepot',
+  type: 'lowes',
   settings?: LowesWorkerSettings,
 ): ReturnType<typeof useLowesWorker>;
 export function usePageWorker(type: Website, settings: any) {

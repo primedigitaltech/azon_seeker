@@ -14,6 +14,7 @@ const options: { label: string; value: string }[] = [
   { label: 'Amazon Review', value: '/amazon-reviews' },
   { label: 'Homedepot', value: '/homedepot' },
   { label: 'Homedepot Review', value: '/homedepot-reviews' },
+  { label: 'Lowes', value: '/lowes' },
 ];
 
 watch(opt, (val) => {
@@ -29,6 +30,9 @@ watch(opt, (val) => {
     case '/homedepot':
     case '/homedepot-reviews':
       site.value = 'homedepot';
+      break;
+    case '/lowes':
+      site.value = 'lowes';
       break;
     default:
       break;

@@ -1,25 +1,16 @@
 <script setup lang="ts">
 import type { Timeline } from '~/components/ProgressReport.vue';
 import { usePageWorker } from '~/page-worker';
-import { detailInputText } from '~/storages/homedepot';
-import { detailWorkerSettings } from '~/storages/homedepot';
+import { detailInputText } from '~/storages/lowes';
 
 const idInputRef = useTemplateRef('id-input');
 
-const worker = usePageWorker('homedepot', { objects: ['detail'] });
+const worker = usePageWorker('lowes', { objects: ['detail'] });
 worker.on('detail-item-collected', ({ item }) => {
   timelines.value.push({
     type: 'success',
-    title: `成功`,
-    content: `成功获取到${item.OSMID}的商品信息`,
-    time: new Date().toLocaleString(),
-  });
-});
-worker.on('review-collected', ({ OSMID, reviews }) => {
-  timelines.value.push({
-    type: 'success',
-    title: `成功`,
-    content: `成功获取到${OSMID}的${reviews.length}条评论`,
+    title: `信息采集`,
+    content: `成功获取到${item.link}的商品信息`,
     time: new Date().toLocaleString(),
   });
 });
@@ -50,7 +41,6 @@ const handleStart = async () => {
           }
           detailInputText.value = remains.join('\n');
         },
-        review: detailWorkerSettings.value.review,
       });
       timelines.value.push({
         type: 'info',
@@ -68,8 +58,8 @@ const handleInterrupt = () => {
 </script>
 
 <template>
-  <div class="homedepot-sidepanel">
-    <header-title>Lowes</header-title>
+  <div class="lowes-sidepanel">
+    <header-title>Lowes Detail</header-title>
     <div class="interative-section">
       <id-input
         v-model="detailInputText"
@@ -81,19 +71,16 @@ const handleInterrupt = () => {
         placeholder="输入URL"
         validate-message="请输入格式正确的URL"
       />
-      <optional-button v-if="!worker.isRunning.value" round size="large" @click="handleStart">
-        <template #popover>
-          <div class="setting-panel">
-            <n-form :label-width="50" label-placement="left" :show-feedback="false">
-              <n-form-item label="评论:">
-                <n-switch v-model:value="detailWorkerSettings.review" />
-              </n-form-item>
-            </n-form>
-          </div>
-        </template>
+      <n-button
+        v-if="!worker.isRunning.value"
+        type="primary"
+        round
+        size="large"
+        @click="handleStart"
+      >
         <n-icon :size="20"><ant-design-thunderbolt-outlined /></n-icon>
         开始
-      </optional-button>
+      </n-button>
       <n-button v-else round size="large" type="primary" @click="handleInterrupt">
         <n-icon :size="20"><ant-design-thunderbolt-outlined /></n-icon>
         停止
@@ -107,7 +94,7 @@ const handleInterrupt = () => {
 </template>
 
 <style scoped lang="scss">
-.homedepot-sidepanel {
+.lowes-sidepanel {
   display: flex;
   flex-direction: column;
   align-items: center;

@@ -31,8 +31,12 @@ class LowesWorkerImpl
       const injector = new LowesDetailPageInjector(tab);
       await injector.waitForPageLoad();
       const baseInfo = await injector.getBaseInfo();
-      await this.emit('detail-item-collected', { item: { ...baseInfo, link: url } });
+      baseInfo &&
+        (await this.emit('detail-item-collected', {
+          item: { ...baseInfo, timestamp: dayjs().format('YYYY/M/D HH:mm:ss'), link: url },
+        }));
       progress && progress(remains);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       setTimeout(() => browser.tabs.remove(tab.id!), 1500);
     }
   }

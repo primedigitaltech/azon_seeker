@@ -15,7 +15,7 @@ export class AmazonSearchPageInjector extends BaseInjector {
       }
       while (true) {
         await new Promise((resolve) => setTimeout(resolve, 500 + ~~(500 * Math.random())));
-        const spins = Array.from(document.querySelectorAll<HTMLDivElement>('.a-spinner')).filter(
+        const spins = Array.from(document.querySelectorAll<HTMLElement>('.a-spinner')).filter(
           (e) => e.getClientRects().length > 0,
         );
         if (spins.length === 0) {
@@ -28,7 +28,7 @@ export class AmazonSearchPageInjector extends BaseInjector {
   public async getPagePattern() {
     return this.run(async () => {
       return Array.from(
-        document.querySelectorAll<HTMLDivElement>(
+        document.querySelectorAll<HTMLElement>(
           '.puisg-row:has(.a-section.a-spacing-small.a-spacing-top-small:not(.a-text-right))',
         ),
       ).filter((e) => e.getClientRects().length > 0).length > 0
@@ -44,7 +44,7 @@ export class AmazonSearchPageInjector extends BaseInjector {
       case 'pattern-1':
         data = await this.run(async () => {
           const items = Array.from(
-            document.querySelectorAll<HTMLDivElement>(
+            document.querySelectorAll<HTMLElement>(
               '.puisg-row:has(.a-section.a-spacing-small.a-spacing-top-small:not(.a-text-right))',
             ),
           ).filter((e) => e.getClientRects().length > 0);
@@ -77,9 +77,9 @@ export class AmazonSearchPageInjector extends BaseInjector {
       case 'pattern-2':
         data = await this.run(async () => {
           const items = Array.from(
-            document.querySelectorAll<HTMLDivElement>(
+            document.querySelectorAll<HTMLElement>(
               '.puis-card-container',
-            ) as unknown as HTMLDivElement[],
+            ) as unknown as HTMLElement[],
           ).filter((e) => e.getClientRects().length > 0);
           const linkObjs = items.reduce<
             Pick<AmazonSearchItem, 'link' | 'title' | 'imageSrc' | 'price'>[]
@@ -113,9 +113,7 @@ export class AmazonSearchPageInjector extends BaseInjector {
 
   public async getCurrentPage() {
     return this.run(async () => {
-      const node = document.querySelector<HTMLDivElement>(
-        '.s-pagination-item.s-pagination-selected',
-      );
+      const node = document.querySelector<HTMLElement>('.s-pagination-item.s-pagination-selected');
       return node ? Number(node.innerText) : 1;
     });
   }
@@ -228,7 +226,7 @@ export class AmazonDetailPageInjector extends BaseInjector {
           null,
           XPathResult.FIRST_ORDERED_NODE_TYPE,
           null,
-        ).singleNodeValue as HTMLDivElement | null;
+        ).singleNodeValue as HTMLElement | null;
         if (targetNode) {
           targetNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return targetNode.innerText;
@@ -241,9 +239,9 @@ export class AmazonDetailPageInjector extends BaseInjector {
   /**获取图像链接 */
   public async getImageUrls() {
     return this.run(async () => {
-      const overlay = document.querySelector<HTMLDivElement>('.overlayRestOfImages');
+      const overlay = document.querySelector<HTMLElement>('.overlayRestOfImages');
       if (overlay) {
-        if (document.querySelector<HTMLDivElement>('#ivThumbs')!.getClientRects().length === 0) {
+        if (document.querySelector<HTMLElement>('#ivThumbs')!.getClientRects().length === 0) {
           overlay.click();
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
@@ -272,7 +270,7 @@ export class AmazonDetailPageInjector extends BaseInjector {
   /**获取精选评论 */
   public async getTopReviews() {
     return this.run(async () => {
-      const targetNode = document.querySelector<HTMLDivElement>('.cr-widget-FocalReviews');
+      const targetNode = document.querySelector<HTMLElement>('.cr-widget-FocalReviews');
       if (!targetNode) {
         return [];
       }
@@ -288,22 +286,22 @@ export class AmazonDetailPageInjector extends BaseInjector {
       );
       const items: AmazonReview[] = [];
       for (let i = 0; i < xResult.snapshotLength; i++) {
-        const commentNode = xResult.snapshotItem(i) as HTMLDivElement | null;
+        const commentNode = xResult.snapshotItem(i) as HTMLElement | null;
         if (!commentNode) {
           continue;
         }
         const id = commentNode.id.split('-')[0];
-        const username = commentNode.querySelector<HTMLDivElement>('.a-profile-name')!.innerText;
-        const title = commentNode.querySelector<HTMLDivElement>(
+        const username = commentNode.querySelector<HTMLElement>('.a-profile-name')!.innerText;
+        const title = commentNode.querySelector<HTMLElement>(
           '[data-hook="review-title"] > span:not(.a-letter-space)',
         )!.innerText;
-        const rating = commentNode.querySelector<HTMLDivElement>(
+        const rating = commentNode.querySelector<HTMLElement>(
           '[data-hook*="review-star-rating"]',
         )!.innerText;
-        const dateInfo = commentNode.querySelector<HTMLDivElement>(
+        const dateInfo = commentNode.querySelector<HTMLElement>(
           '[data-hook="review-date"]',
         )!.innerText;
-        const content = commentNode.querySelector<HTMLDivElement>(
+        const content = commentNode.querySelector<HTMLElement>(
           '[data-hook="review-body"]',
         )!.innerText;
         const imageSrc = Array.from(
@@ -446,22 +444,22 @@ export class AmazonReviewPageInjector extends BaseInjector {
       );
       const items: AmazonReview[] = [];
       for (let i = 0; i < xResult.snapshotLength; i++) {
-        const commentNode = xResult.snapshotItem(i) as HTMLDivElement;
+        const commentNode = xResult.snapshotItem(i) as HTMLElement;
         if (!commentNode) {
           continue;
         }
         const id = commentNode.id.split('-')[0];
-        const username = commentNode.querySelector<HTMLDivElement>('.a-profile-name')!.innerText;
-        const title = commentNode.querySelector<HTMLDivElement>(
+        const username = commentNode.querySelector<HTMLElement>('.a-profile-name')!.innerText;
+        const title = commentNode.querySelector<HTMLElement>(
           '[data-hook="review-title"] > span:not(.a-letter-space)',
         )!.innerText;
-        const rating = commentNode.querySelector<HTMLDivElement>(
+        const rating = commentNode.querySelector<HTMLElement>(
           '[data-hook*="review-star-rating"]',
         )!.innerText;
-        const dateInfo = commentNode.querySelector<HTMLDivElement>(
+        const dateInfo = commentNode.querySelector<HTMLElement>(
           '[data-hook="review-date"]',
         )!.innerText;
-        const content = commentNode.querySelector<HTMLDivElement>(
+        const content = commentNode.querySelector<HTMLElement>(
           '[data-hook="review-body"]',
         )!.innerText;
         const imageSrc = Array.from(
@@ -490,7 +488,7 @@ export class AmazonReviewPageInjector extends BaseInjector {
       ).singleNodeValue as HTMLElement | null;
       latestReview?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      const nextPageNode = document.querySelector<HTMLDivElement>(
+      const nextPageNode = document.querySelector<HTMLElement>(
         '[data-hook="pagination-bar"] .a-pagination > *:nth-of-type(2)',
       );
       nextPageNode?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -504,7 +502,7 @@ export class AmazonReviewPageInjector extends BaseInjector {
   public async showStarsDropDownMenu() {
     return this.run(async () => {
       while (true) {
-        const dropdown = document.querySelector<HTMLDivElement>('#star-count-dropdown')!;
+        const dropdown = document.querySelector<HTMLElement>('#star-count-dropdown')!;
         dropdown.scrollIntoView({ behavior: 'smooth', block: 'center' });
         dropdown.click();
         if (dropdown.getAttribute('aria-expanded') === 'true') {

@@ -27,6 +27,9 @@ watch(currentUrl, (newVal) => {
       case 'www.homedepot.com':
         site.value = 'homedepot';
         break;
+      case 'www.lowes.com':
+        site.value = 'lowes';
+        break;
       default:
         break;
     }
@@ -40,6 +43,9 @@ watch(site, (newVal) => {
       break;
     case 'homedepot':
       router.push('/homedepot');
+      break;
+    case 'lowes':
+      router.push('/lowes');
       break;
     default:
       break;

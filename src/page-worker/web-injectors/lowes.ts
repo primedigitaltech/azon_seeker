@@ -12,6 +12,7 @@ export class LowesDetailPageInjector extends BaseInjector {
         if (document.readyState === 'complete') {
           break;
         }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     });
   }
@@ -24,8 +25,8 @@ export class LowesDetailPageInjector extends BaseInjector {
         document,
         null,
         XPathResult.FIRST_ORDERED_NODE_TYPE,
-      ).singleNodeValue as HTMLDivElement | null;
-      const itemSeries = itemNumberEl?.innerText.replace('Item #', '').trim();
+      ).singleNodeValue as HTMLElement | null;
+      const itemSeries = itemNumberEl?.innerText.replace('Item #', '').replace('|', '').trim();
 
       // 获取Model #
       const modelNumberEl = document.evaluate(
@@ -33,35 +34,33 @@ export class LowesDetailPageInjector extends BaseInjector {
         document,
         null,
         XPathResult.FIRST_ORDERED_NODE_TYPE,
-      ).singleNodeValue as HTMLDivElement | null;
+      ).singleNodeValue as HTMLElement | null;
       const modelSeries = modelNumberEl?.innerText.replace('Model #', '').trim();
 
       // 获取品牌名称
-      const brandName = (
-        document.evaluate(
-          `//h1[contains(@class, "product-brand-description")]/parent::*/parent::*/following-sibling::*[1]//a`,
-          document,
-          null,
-          XPathResult.FIRST_ORDERED_NODE_TYPE,
-        ).singleNodeValue as HTMLDivElement
-      ).innerText;
+      const brandName = document.querySelector<HTMLElement>(
+        '[data-component-name="RatingsNLinks"] a .label',
+      )?.innerText;
+
+      // 销量信息
+      const boughtInfo = document.querySelector<HTMLElement>(
+        '[data-component-name="ExclusiveBadge"]',
+      )?.innerText;
 
       // 获取标题
-      const title = document.querySelector<HTMLDivElement>(
-        `h1.product-brand-description`,
-      )!.innerText;
+      const title = document.querySelector<HTMLElement>(`h1.product-brand-description`)!.innerText;
 
       // 获取价格
       const price = document
-        .querySelector<HTMLDivElement>(`.screen-reader`)!
+        .querySelector<HTMLElement>(`.screen-reader`)!
         .innerText.replaceAll('\n', '');
 
       // 获取评分
-      const rate = document.querySelector<HTMLDivElement>(`.avgrating`)?.innerText;
+      const rate = document.querySelector<HTMLElement>(`.avgrating`)?.innerText;
 
       // 获取评价数量
       const reviewCount = Number(
-        document.querySelector<HTMLDivElement>(`[data-testid="rating-trigger"] > div > div > span`)
+        document.querySelector<HTMLElement>(`[data-testid="rating-trigger"] > div > div > span`)
           ?.innerText || '0',
       );
 
@@ -77,6 +76,7 @@ export class LowesDetailPageInjector extends BaseInjector {
         rate,
         reviewCount,
         mainImageUrl,
+        boughtInfo,
         itemSeries,
         modelSeries,
       };

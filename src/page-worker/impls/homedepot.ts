@@ -49,11 +49,11 @@ class HomedepotWorkerImpl
       return;
     }
     await injector.waitForReviewLoad();
-    const reviews = await injector.getReviews();
-    await this.emit('review-collected', { OSMID, reviews });
-    while (await injector.tryJumpToNextPage()) {
-      const reviews = await injector.getReviews();
-      await this.emit('review-collected', { OSMID, reviews });
+    let reviews = await injector.getReviews();
+    reviews.length > 0 && (await this.emit('review-collected', { OSMID, reviews }));
+    while ((await injector.tryJumpToNextPage()) && reviews.length > 0) {
+      reviews = await injector.getReviews();
+      reviews.length > 0 && (await this.emit('review-collected', { OSMID, reviews }));
     }
     setTimeout(() => {
       browser.tabs.remove(tab.id!);

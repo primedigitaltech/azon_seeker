@@ -2,7 +2,7 @@
 import type { TableColumn } from '~/components/ResultTable.vue';
 import { useExcelHelper } from '~/composables/useExcelHelper';
 import type { Header } from '~/logic/excel';
-import { allItems } from '~/storages/homedepot';
+import { allItems } from '~/storages/lowes';
 
 const message = useMessage();
 const excelHelper = useExcelHelper();
@@ -15,18 +15,17 @@ const resetFilter = () => {
 
 const columns: TableColumn[] = [
   {
-    title: 'OSMID',
-    key: 'OSMID',
-    minWidth: 100,
-  },
-  {
     title: '品牌名称',
     key: 'brandName',
     minWidth: 120,
   },
   {
-    title: '型号信息',
-    key: 'modelInfo',
+    title: 'Item #',
+    key: 'itemSeries',
+  },
+  {
+    title: 'Model #',
+    key: 'modelSeries',
   },
   {
     title: '标题',
@@ -50,6 +49,11 @@ const columns: TableColumn[] = [
   {
     title: '获取日期',
     key: 'timestamp',
+    minWidth: 150,
+  },
+  {
+    title: '销量信息',
+    key: 'boughtInfo',
     minWidth: 150,
   },
   {
@@ -84,12 +88,6 @@ const extraHeaders: Header[] = [
   {
     label: '主图链接',
     prop: 'mainImageUrl',
-  },
-  {
-    label: '图片链接',
-    prop: 'imageUrls',
-    formatOutputValue: (val?: string[]) => val?.join(';'),
-    parseImportValue: (val?: string) => val?.split(';'),
   },
 ];
 
@@ -140,7 +138,7 @@ const handleExport = async (opt: 'cloud' | 'local') => {
     <result-table :records="filteredData" :columns="columns">
       <template #header>
         <n-space align="center">
-          <h3 class="header-text">Homedepot 数据</h3>
+          <h3 class="header-text">Lowes 数据</h3>
         </n-space>
       </template>
       <template #header-extra>

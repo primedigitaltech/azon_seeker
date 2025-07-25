@@ -14,12 +14,14 @@ const routeObj: Record<'sidepanel' | 'options', RouteRecordRaw[]> = {
     { path: '/amazon-reviews', component: () => import('~/options/views/AmazonReviews.vue') },
     { path: '/homedepot', component: () => import('~/options/views/HomedepotResultTable.vue') },
     { path: '/homedepot-reviews', component: () => import('~/options/views/HomedepotReviews.vue') },
+    { path: '/lowes', component: () => import('~/options/views/LowesResultTable.vue') },
     { path: '/help', component: () => import('~/options/views/help/guide.md') },
   ],
   sidepanel: [
     { path: '/', redirect: `/${site.value}` },
     { path: '/amazon', component: () => import('~/sidepanel/views/AmazonSidepanel.vue') },
     { path: '/homedepot', component: () => import('~/sidepanel/views/HomedepotSidepanel.vue') },
+    { path: '/lowes', component: () => import('~/sidepanel/views/LowesSidepanel.vue') },
   ],
 };
 
@@ -29,11 +31,11 @@ export const router: Plugin = {
       case 'sidepanel':
       case 'options':
         const routes = routeObj[appContext];
-        const router = createRouter({
+        const vueRouter = createRouter({
           history: appContext === 'sidepanel' ? createMemoryHistory() : createWebHashHistory(),
           routes,
         });
-        app.use(router);
+        app.use(vueRouter);
       default:
         break;
     }
