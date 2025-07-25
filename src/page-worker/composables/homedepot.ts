@@ -37,9 +37,7 @@ function buildHomedepotWorker(): WorkerComposable<HomedepotWorker, HomedepotWork
         reviewCache.set(OSMID, (reviewCache.get(OSMID) || []).concat(reviews));
       }),
     ];
-    return () => {
-      unsubscribes.forEach((unsubscribe) => unsubscribe());
-    };
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   }
 
   const unsubscribe = registerWorkerEvents();

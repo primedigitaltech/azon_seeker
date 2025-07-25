@@ -142,9 +142,7 @@ function buildAmazonPageWorker(): WorkerComposable<AmazonPageWorker, AmazonPageW
       }),
     ];
 
-    return () => {
-      unsubscribes.forEach((unsubscribe) => unsubscribe());
-    };
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   }
 
   // Register event handlers on mount

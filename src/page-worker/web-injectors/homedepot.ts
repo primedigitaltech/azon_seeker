@@ -114,7 +114,7 @@ export class HomedepotDetailPageInjector extends BaseInjector {
         'script#thd-helmet__script--productStructureData',
       )!.innerText;
       const obj = JSON.parse(text);
-      return (obj['image'] as string[]).map((url) => url.slice(1, -1));
+      return obj['image'] as string[];
     });
   }
 
@@ -157,7 +157,9 @@ export class HomedepotDetailPageInjector extends BaseInjector {
           .filter((t) => t.length !== 0);
         const imageUrls = Array.from(
           root.querySelectorAll<HTMLElement>('.media-carousel__media > button'),
-        ).map((el) => el.style.backgroundImage.split(/[\(\)]/, 3)[1]);
+        )
+          .map((el) => el.style.backgroundImage.split(/[\(\)]/, 3)[1])
+          .map((url) => url.slice(1, -1));
         return { title, content, username, dateInfo, rating, badges, imageUrls } as HomedepotReview;
       });
     });

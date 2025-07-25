@@ -139,7 +139,7 @@ export function useWebExtensionStorage<T>(
     });
   }
 
-  pullFromStorage(); // Init
+  void pullFromStorage(); // Init
 
   return data;
 }

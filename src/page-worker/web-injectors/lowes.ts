@@ -49,12 +49,12 @@ export class LowesDetailPageInjector extends BaseInjector {
       // 获取标题
       const title = document.querySelector<HTMLDivElement>(
         `h1.product-brand-description`,
-      )?.innerText;
+      )!.innerText;
 
       // 获取价格
       const price = document
-        .querySelector<HTMLDivElement>(`.screen-reader`)
-        ?.innerText.replaceAll('\n', '');
+        .querySelector<HTMLDivElement>(`.screen-reader`)!
+        .innerText.replaceAll('\n', '');
 
       // 获取评分
       const rate = document.querySelector<HTMLDivElement>(`.avgrating`)?.innerText;
@@ -68,7 +68,7 @@ export class LowesDetailPageInjector extends BaseInjector {
       // 获取图片URL
       const mainImageUrl = document.querySelector<HTMLImageElement>(
         `#mfe-gallery .productImage.tile-img`,
-      )?.src;
+      )!.src;
 
       return {
         brandName,

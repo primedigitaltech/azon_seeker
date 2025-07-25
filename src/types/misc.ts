@@ -19,7 +19,7 @@ declare module '*.md' {
 
 declare type AppContext = 'options' | 'sidepanel' | 'background' | 'content script';
 
-declare type Website = 'amazon' | 'homedepot';
+declare type Website = 'amazon' | 'homedepot' | 'lowes';
 
 declare const appContext: AppContext;
 

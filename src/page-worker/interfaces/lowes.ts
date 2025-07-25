@@ -8,7 +8,7 @@ export interface LowesEvents {
   ['error']: { message: string; url?: string };
 }
 
-export interface LowesWorker {
+export interface LowesWorker extends Listener<LowesEvents> {
   /**
    * Browsing item detail page and collect target information
    */

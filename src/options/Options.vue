@@ -27,6 +27,7 @@ watch(opt, (val) => {
       site.value = 'amazon';
       break;
     case '/homedepot':
+    case '/homedepot-reviews':
       site.value = 'homedepot';
       break;
     default:
